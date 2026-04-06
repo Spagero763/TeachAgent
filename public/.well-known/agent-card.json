@@ -1,0 +1,22 @@
+{
+  "type": "agent",
+  "name": "TeachAgent",
+  "description": "AI agent that scores educators and provides tutoring sessions on Celo",
+  "version": "1.0.0",
+  "endpoints": [
+    {
+      "type": "rest",
+      "url": "https://teachagent-production.up.railway.app"
+    }
+  ],
+  "capabilities": [
+    "educator-scoring",
+    "tutoring-sessions",
+    "reputation-tracking"
+  ],
+  "payment": {
+    "token": "cUSD",
+    "pricePerSession": "0.1",
+    "network": "celo"
+  }
+}
