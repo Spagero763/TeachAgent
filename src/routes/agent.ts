@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express"
 import { ethers } from "ethers"
 import { scoreEducator, runTutoringSession } from "../lib/claude"
-import { eduPayContract, identityRegistry, reputationRegistry, agentWallet } from "../lib/celo"
+import { eduPayContract, agentRegistry, agentWallet, AGENT_REGISTRY_ADDRESS } from "../lib/celo"
 import dotenv from "dotenv"
 dotenv.config()
 
@@ -130,21 +130,20 @@ agentRouter.get("/reputation", async (req: Request, res: Response) => {
     const agentId = process.env.AGENT_ID
     if (!agentId) {
       return res.json({
-        message: "Agent not yet registered on ERC-8004",
+        message: "Agent not yet registered",
         agentAddress: agentWallet.address,
-        registrationGuide: "POST /agent/register to register",
+        registry: AGENT_REGISTRY_ADDRESS,
       })
     }
 
-    const summary = await reputationRegistry.getSummary(Number(agentId))
+    const rep = await agentRegistry.getReputation(Number(agentId))
     res.json({
       agentId,
       agentAddress: agentWallet.address,
-      totalScore: summary.totalScore.toString(),
-      feedbackCount: summary.feedbackCount.toString(),
-      averageScore: summary.feedbackCount.gt(0)
-        ? summary.totalScore.div(summary.feedbackCount).toString()
-        : "0",
+      totalScore: rep.total.toString(),
+      feedbackCount: rep.count.toString(),
+      averageScore: rep.average.toString(),
+      registry: AGENT_REGISTRY_ADDRESS,
       network: "Celo Mainnet",
     })
   } catch (err: any) {
@@ -155,22 +154,22 @@ agentRouter.get("/reputation", async (req: Request, res: Response) => {
 // POST /agent/register — register agent on ERC-8004
 agentRouter.post("/register", async (req: Request, res: Response) => {
   try {
-        const agentCardURI = req.body.agentCardURI || 
-  `https://teachagent-production.up.railway.app/.well-known/agent-card.json`
-    const tx = await identityRegistry.register(agentCardURI)
+    const agentCardURI = req.body.agentCardURI ||
+      `https://teachagent-production.up.railway.app/.well-known/agent-card.json`
+
+    const tx = await agentRegistry.register(agentCardURI)
     const receipt = await tx.wait()
 
-    // Extract agentId from Transfer event
     const iface = new ethers.utils.Interface([
-      "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
+      "event AgentRegistered(uint256 indexed agentId, address indexed owner, string agentURI)",
     ])
 
     let agentId = null
     for (const log of receipt.logs) {
       try {
         const parsed = iface.parseLog(log)
-        if (parsed.name === "Transfer") {
-          agentId = parsed.args.tokenId.toString()
+        if (parsed.name === "AgentRegistered") {
+          agentId = parsed.args.agentId.toString()
         }
       } catch {}
     }
@@ -180,8 +179,9 @@ agentRouter.post("/register", async (req: Request, res: Response) => {
       agentId,
       txHash: receipt.transactionHash,
       agentCardURI,
-      message: `Set AGENT_ID=${agentId} in your .env file`,
-      viewOn8004scan: `https://8004scan.io/agent/${agentId}`,
+      registry: AGENT_REGISTRY_ADDRESS,
+      message: `Set AGENT_ID=${agentId} in your env`,
+      viewOnCeloscan: `https://celoscan.io/address/${AGENT_REGISTRY_ADDRESS}`,
     })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
