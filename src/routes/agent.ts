@@ -13,7 +13,7 @@ agentRouter.get("/identity", async (req: Request, res: Response) => {
     res.json({
       agentAddress: agentWallet.address,
       identityRegistry: process.env.ERC8004_IDENTITY_REGISTRY,
-      reputationRegistry: process.env.ERC8004_REPUTATION_REGISTRY,
+      agentRegistry: process.env.ERC8004_REPUTATION_REGISTRY,
       network: "Celo Mainnet",
       chainId: 42220,
       agentCard: {
@@ -67,7 +67,7 @@ agentRouter.post("/score", async (req: Request, res: Response) => {
     if (agentId) {
       try {
         const score8 = Math.min(100, Math.max(0, result.score)) as number
-        await reputationRegistry.giveFeedback(
+        await agentRegistry.giveFeedback(
           Number(agentId),
           score8,
           "educator-score",
