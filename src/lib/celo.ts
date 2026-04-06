@@ -6,10 +6,14 @@ export const provider = new ethers.providers.JsonRpcProvider(
   process.env.CELO_RPC || "https://forno.celo.org"
 )
 
-export const agentWallet = new ethers.Wallet(
-  process.env.AGENT_PRIVATE_KEY || "",
-  provider
-)
+// Only create wallet if private key exists
+const privateKey = process.env.AGENT_PRIVATE_KEY
+
+export const agentWallet = privateKey
+  ? new ethers.Wallet(privateKey, provider)
+  : ethers.Wallet.createRandom().connect(provider)
+
+export const AGENT_CONFIGURED = !!privateKey
 
 // ERC-8004 Identity Registry ABI (minimal)
 export const IDENTITY_REGISTRY_ABI = [
