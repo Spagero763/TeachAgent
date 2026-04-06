@@ -155,8 +155,8 @@ agentRouter.get("/reputation", async (req: Request, res: Response) => {
 // POST /agent/register — register agent on ERC-8004
 agentRouter.post("/register", async (req: Request, res: Response) => {
   try {
-    const agentCardURI = req.body.agentCardURI || `https://teachagent.vercel.app/.well-known/agent-card.json`
-
+        const agentCardURI = req.body.agentCardURI || 
+  `https://teachagent-production.up.railway.app/.well-known/agent-card.json`
     const tx = await identityRegistry.register(agentCardURI)
     const receipt = await tx.wait()
 
