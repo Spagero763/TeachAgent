@@ -87,7 +87,11 @@ agentRouter.post("/score", async (req: Request, res: Response) => {
       network: "Celo Mainnet",
     })
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    console.error("Score error:", err)
+    res.status(500).json({ 
+      error: err.message,
+      hint: "Check ANTHROPIC_API_KEY in environment variables"
+    })
   }
 })
 

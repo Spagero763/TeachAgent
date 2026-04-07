@@ -32,48 +32,53 @@ Tutor Address: ${data.tutorAddress}
 Courses Created: ${data.courseCount}
 Total Earned: ${data.totalEarned} cUSD
 Courses:
-${data.courseDetails.map((c, i) => `
+${data.courseDetails.length === 0 ? "No courses yet" : data.courseDetails.map((c, i) => `
   ${i + 1}. "${c.title}"
      Description: ${c.description}
      Chapters: ${c.chapterCount}
 `).join("")}
 
 Score this educator from 0-100 based on:
-- Course quality and depth (titles, descriptions)
+- Course quality and depth
 - Number of courses and chapters
 - Earnings (indicates real student demand)
 - Course diversity
 
-Respond ONLY with valid JSON in this exact format:
+Respond ONLY with valid JSON:
 {
   "score": <number 0-100>,
   "grade": "<A/B/C/D/F>",
   "summary": "<2 sentence summary>",
-  "strengths": ["<strength 1>", "<strength 2>", "<strength 3>"],
+  "strengths": ["<strength 1>", "<strength 2>"],
   "improvements": ["<improvement 1>", "<improvement 2>"],
-  "recommendation": "<1 sentence recommendation for students>"
+  "recommendation": "<1 sentence recommendation>"
 }
 `
 
-  const response = await axios.post(
-    "https://api.anthropic.com/v1/messages",
-    {
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      messages: [{ role: "user", content: prompt }],
-    },
-    {
-      headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
+  try {
+    const response = await axios.post(
+      "https://api.anthropic.com/v1/messages",
+      {
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }],
       },
-    }
-  )
+      {
+        headers: {
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+      }
+    )
 
-  const text = response.data.content[0].text
-  const clean = text.replace(/```json|```/g, "").trim()
-  return JSON.parse(clean) as ScoringResult
+    const text = response.data.content[0].text
+    const clean = text.replace(/```json|```/g, "").trim()
+    return JSON.parse(clean) as ScoringResult
+  } catch (err: any) {
+    const detail = err?.response?.data || err?.message
+    throw new Error(`Claude API error: ${JSON.stringify(detail)}`)
+  }
 }
 
 export async function runTutoringSession(data: {
