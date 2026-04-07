@@ -6,7 +6,7 @@
   "endpoints": [
     {
       "type": "rest",
-      "url": "https://teachagent-production.up.railway.app"
+      "url": "https://teachagent.onrender.com"
     }
   ],
   "capabilities": [
