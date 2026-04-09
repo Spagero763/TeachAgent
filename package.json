@@ -9,11 +9,16 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@types/three": "^0.183.1",
     "axios": "^1.6.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "ethers": "^5.7.2",
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "framer-motion": "^12.38.0",
+    "gsap": "^3.14.2",
+    "thirdweb": "^5.119.4",
+    "three": "^0.183.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
