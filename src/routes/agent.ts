@@ -1,3 +1,4 @@
+import { getPaymentRequirements, verifyPayment, CUSD_ADDRESS } from "../lib/x402"
 import { Router, Request, Response } from "express"
 import { ethers } from "ethers"
 import { scoreEducator, runTutoringSession } from "../lib/claude"
@@ -95,22 +96,60 @@ agentRouter.post("/score", async (req: Request, res: Response) => {
   }
 })
 
-// POST /agent/session — pay-per-question tutoring session
+// POST /agent/session — x402 pay-per-question
 agentRouter.post("/session", async (req: Request, res: Response) => {
-  const { question, courseTitle, tutorAddress, studentAddress } = req.body
+  const { question, courseTitle, tutorAddress, studentAddress, txHash } = req.body
 
-  if (!question || !courseTitle || !tutorAddress || !studentAddress) {
+  if (!question || !courseTitle) {
     return res.status(400).json({
-      error: "question, courseTitle, tutorAddress and studentAddress required",
+      error: "question and courseTitle are required",
     })
   }
 
+  // ── Step 1: No txHash → return 402 with payment requirements ──
+  if (!txHash) {
+    const requirements = getPaymentRequirements(agentWallet.address)
+    return res.status(402).json({
+      error: "Payment required",
+      message: "Send 0.001 cUSD to TeachAgent on Celo to unlock this session",
+      payTo: agentWallet.address,
+      amount: "0.001",
+      token: "cUSD",
+      tokenAddress: CUSD_ADDRESS,
+      network: "Celo Mainnet",
+      chainId: 42220,
+      miniPayCompatible: true,
+      instructions: {
+        step1: "Approve cUSD spend: approve(agentAddress, 1000000000000000)",
+        step2: "Transfer cUSD: transfer(agentAddress, 1000000000000000)",
+        step3: "Re-call this endpoint with the txHash",
+      },
+      requirements,
+    })
+  }
+
+  // ── Step 2: txHash provided → verify payment ──
   try {
+    const { valid, payer, error: payErr } = await verifyPayment(
+      txHash,
+      agentWallet.address,
+      provider
+    )
+
+    if (!valid) {
+      return res.status(402).json({
+        error: "Payment verification failed",
+        reason: payErr,
+        txHash,
+      })
+    }
+
+    // ── Step 3: Payment verified → run AI session ──
     const answer = await runTutoringSession({
       question,
       courseTitle,
-      tutorAddress,
-      studentAddress,
+      tutorAddress: tutorAddress || "unknown",
+      studentAddress: studentAddress || payer || "unknown",
     })
 
     res.json({
@@ -118,12 +157,19 @@ agentRouter.post("/session", async (req: Request, res: Response) => {
       answer,
       course: courseTitle,
       tutor: tutorAddress,
-      student: studentAddress,
+      student: studentAddress || payer,
       sessionAt: new Date().toISOString(),
-      fee: "0.1 cUSD",
-      note: "x402 payment integration coming in v2",
+      payment: {
+        txHash,
+        payer,
+        amount: "0.001 cUSD",
+        verified: true,
+        network: "Celo Mainnet",
+      },
+      miniPayCompatible: true,
     })
   } catch (err: any) {
+    console.error("Session error:", err)
     res.status(500).json({ error: err.message })
   }
 })
