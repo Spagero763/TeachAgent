@@ -11,6 +11,7 @@
   "dependencies": {
     "@types/gsap": "^1.20.2",
     "@types/three": "^0.183.1",
+    "ethers": "^5.8.0",
     "framer-motion": "^12.38.0",
     "gsap": "^3.14.2",
     "next": "16.2.2",
