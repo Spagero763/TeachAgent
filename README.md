@@ -4,27 +4,52 @@
 
 TeachAgent scores educators using Claude AI, reads their onchain activity from EduPay, and posts reputation scores to the ERC-8004 Reputation Registry on Celo.
 
+## How to Use TeachAgent
+
+### Score an educator
+```bash
+curl -X POST https://teachagent.onrender.com/agent/score \
+  -H "Content-Type: application/json" \
+  -d '{"tutorAddress": "0x..."}'
+```
+
+### Ask a question (with payment)
+
+**Step 1** — Call without txHash to get payment requirements:
+```bash
+curl -X POST https://teachagent.onrender.com/agent/session \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is a smart contract?", "courseTitle": "Blockchain 101"}'
+# Returns 402 with payTo address
+```
+
+**Step 2** — Send 0.001 cUSD to the agent wallet on Celo
+
+**Step 3** — Re-call with txHash:
+```bash
+curl -X POST https://teachagent.onrender.com/agent/session \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "What is a smart contract?",
+    "courseTitle": "Blockchain 101",
+    "txHash": "0x..."
+  }'
+```
+
+### MiniPay compatible
+TeachAgent accepts cUSD payments from MiniPay on Celo. Open MiniPay → send 0.001 cUSD to `[agent wallet address]` → use the tx hash.
+
 ## Live Endpoints
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/health` | Agent health check |
-| GET | `/agent/identity` | Agent ERC-8004 identity |
-| GET | `/agent/reputation` | Agent reputation summary |
-| POST | `/agent/score` | Score an educator |
-| POST | `/agent/session` | Tutoring session |
-| POST | `/agent/register` | Register on ERC-8004 |
-
-## Tech Stack
-
-| Layer | Technology |
+| Endpoint | Description |
 |---|---|
-| Runtime | Node.js + TypeScript |
-| AI | Claude (Anthropic) |
-| Blockchain | Celo Mainnet |
-| Identity | ERC-8004 |
-| Payments | x402 (Thirdweb) |
-| Data source | EduPay contract |
+| `GET /health` | Agent status |
+| `GET /agent/identity` | Agent ERC-8004 identity |
+| `GET /agent/reputation` | Onchain reputation score |
+| `POST /agent/score` | Score an educator (free) |
+| `POST /agent/session` | Tutoring session (0.001 cUSD) |
+| `POST /agent/register` | Register on AgentRegistry |
+
 
 ## ERC-8004 Identity
 
