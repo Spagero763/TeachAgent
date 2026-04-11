@@ -1,5 +1,6 @@
 "use client"
 
+import { ethers } from "ethers"
 import { useRef, useState } from "react"
 import { motion, useScroll, useTransform, useInView } from "framer-motion"
 import { Navbar } from "@/components/Navbar"
@@ -132,23 +133,21 @@ async function payAndAsk() {
       return
     }
 
-    const provider = new (await import("ethers")).ethers.providers.Web3Provider(eth)
-    await provider.send("eth_requestAccounts", [])
-    const signer = provider.getSigner()
+    const web3Provider = new ethers.providers.Web3Provider(eth)
+    await web3Provider.send("eth_requestAccounts", [])
+    const signer = web3Provider.getSigner()
     const userAddress = await signer.getAddress()
 
-    // cUSD transfer
-    const cusd = new (await import("ethers")).ethers.Contract(
+    const cusd = new ethers.Contract(
       "0x765DE816845861e75A25fCA122bb6898B8B1282a",
       ["function transfer(address to, uint256 amount) external returns (bool)"],
       signer
     )
 
-    const amount = (await import("ethers")).ethers.utils.parseEther("0.001")
+    const amount = ethers.utils.parseEther("0.001")
     const tx = await cusd.transfer(paymentInfo.payTo, amount)
     const receipt = await tx.wait()
 
-    // Step 2 — retry with txHash
     const r2 = await fetch("https://teachagent.onrender.com/agent/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -2,7 +2,7 @@ import { getPaymentRequirements, verifyPayment, CUSD_ADDRESS } from "../lib/x402
 import { Router, Request, Response } from "express"
 import { ethers } from "ethers"
 import { scoreEducator, runTutoringSession } from "../lib/claude"
-import { eduPayContract, agentRegistry, agentWallet, AGENT_REGISTRY_ADDRESS } from "../lib/celo"
+import { eduPayContract, agentRegistry, agentWallet, AGENT_REGISTRY_ADDRESS, provider } from "../lib/celo"
 import dotenv from "dotenv"
 dotenv.config()
 
