@@ -9,6 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@reown/appkit": "^1.8.19",
+    "@reown/appkit-adapter-wagmi": "^1.8.19",
+    "@tanstack/react-query": "^5.99.0",
     "@types/gsap": "^1.20.2",
     "@types/three": "^0.183.1",
     "ethers": "^5.8.0",
@@ -17,7 +20,8 @@
     "next": "16.2.2",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "three": "^0.183.2"
+    "three": "^0.183.2",
+    "wagmi": "^3.6.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

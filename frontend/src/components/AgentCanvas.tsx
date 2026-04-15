@@ -17,7 +17,6 @@ export function AgentCanvas() {
     const camera = new THREE.PerspectiveCamera(40, canvas.clientWidth / canvas.clientHeight, 0.1, 100)
     camera.position.set(0, 0, 6)
 
-    // Main shape — subtle, dark
     const geo = new THREE.IcosahedronGeometry(1.6, 1)
     const mat = new THREE.MeshStandardMaterial({
       color: new THREE.Color("#0d0d1a"),
@@ -29,37 +28,24 @@ export function AgentCanvas() {
     const mesh = new THREE.Mesh(geo, mat)
     scene.add(mesh)
 
-    // Wire overlay — very subtle
-    const wireMat = new THREE.MeshBasicMaterial({
-      color: "#4f46e5",
-      wireframe: true,
-      transparent: true,
-      opacity: 0.08,
-    })
+    const wireMat = new THREE.MeshBasicMaterial({ color: "#4f46e5", wireframe: true, transparent: true, opacity: 0.08 })
     const wire = new THREE.Mesh(geo, wireMat)
     wire.scale.setScalar(1.01)
     scene.add(wire)
 
-    // Second ring shape
-    const ring = new THREE.TorusGeometry(2.4, 0.008, 8, 80)
-    const ringMat = new THREE.MeshBasicMaterial({
-      color: "#818cf8",
-      transparent: true,
-      opacity: 0.12,
-    })
-    scene.add(new THREE.Mesh(ring, ringMat))
+    const ring1 = new THREE.Mesh(
+      new THREE.TorusGeometry(2.4, 0.008, 8, 80),
+      new THREE.MeshBasicMaterial({ color: "#818cf8", transparent: true, opacity: 0.12 })
+    )
+    scene.add(ring1)
 
-    const ring2 = new THREE.TorusGeometry(2.8, 0.005, 8, 80)
-    const ring2Mat = new THREE.MeshBasicMaterial({
-      color: "#c7d2fe",
-      transparent: true,
-      opacity: 0.06,
-    })
-    const ring2Mesh = new THREE.Mesh(ring2, ring2Mat)
-    ring2Mesh.rotation.x = Math.PI / 3
-    scene.add(ring2Mesh)
+    const ring2 = new THREE.Mesh(
+      new THREE.TorusGeometry(2.9, 0.005, 8, 80),
+      new THREE.MeshBasicMaterial({ color: "#c7d2fe", transparent: true, opacity: 0.06 })
+    )
+    ring2.rotation.x = Math.PI / 3
+    scene.add(ring2)
 
-    // Particles — very sparse
     const pCount = 80
     const pPos = new Float32Array(pCount * 3)
     for (let i = 0; i < pCount; i++) {
@@ -72,10 +58,8 @@ export function AgentCanvas() {
     }
     const pGeo = new THREE.BufferGeometry()
     pGeo.setAttribute("position", new THREE.BufferAttribute(pPos, 3))
-    const pMat = new THREE.PointsMaterial({ color: "#a5b4fc", size: 0.018, transparent: true, opacity: 0.5 })
-    scene.add(new THREE.Points(pGeo, pMat))
+    scene.add(new THREE.Points(pGeo, new THREE.PointsMaterial({ color: "#a5b4fc", size: 0.018, transparent: true, opacity: 0.5 })))
 
-    // Lighting
     scene.add(new THREE.AmbientLight("#ffffff", 0.1))
     const l1 = new THREE.PointLight("#4f46e5", 4, 12)
     l1.position.set(4, 4, 4)
@@ -99,8 +83,8 @@ export function AgentCanvas() {
       mesh.rotation.x = t * 0.08 + my * 0.2
       mesh.rotation.y = t * 0.12 + mx * 0.2
       wire.rotation.copy(mesh.rotation)
-      ring2Mesh.rotation.z = t * 0.04
-      ;(mat as THREE.MeshStandardMaterial).emissiveIntensity = 0.18 + Math.sin(t * 0.8) * 0.08
+      ring2.rotation.z = t * 0.04
+      mat.emissiveIntensity = 0.18 + Math.sin(t * 0.8) * 0.08
       l1.position.x = Math.sin(t * 0.5) * 4
       renderer.render(scene, camera)
     }

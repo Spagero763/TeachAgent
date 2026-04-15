@@ -1,45 +1,21 @@
 import { ethers } from "ethers"
-import dotenv from "dotenv"
-dotenv.config()
 
-// cUSD on Celo mainnet
 export const CUSD_ADDRESS = "0x765DE816845861e75A25fCA122bb6898B8B1282a"
-export const SESSION_PRICE = ethers.utils.parseEther("0.001") // 0.001 cUSD
+export const SESSION_PRICE_CUSD = ethers.utils.parseEther("0.0001")
 
-export const CUSD_ABI = [
-  "function allowance(address owner, address spender) external view returns (uint256)",
-  "function balanceOf(address account) external view returns (uint256)",
-  "function transferFrom(address from, address to, uint256 amount) external returns (bool)",
-]
-
-// Payment requirements returned in 402 response
 export function getPaymentRequirements(agentAddress: string) {
   return {
-    scheme: "exact",
-    network: "celo",
-    chainId: 42220,
-    maxAmountRequired: SESSION_PRICE.toString(),
-    resource: "https://teachagent.onrender.com/agent/session",
-    description: "0.001 cUSD per tutoring session — TeachAgent on Celo",
-    mimeType: "application/json",
     payTo: agentAddress,
-    maxTimeoutSeconds: 300,
-    asset: CUSD_ADDRESS,
-    outputSchema: {
-      type: "object",
-      properties: {
-        answer: { type: "string" },
-      },
-    },
-    extra: {
-      name: "TeachAgent Session",
-      version: "1.0.0",
-      miniPayCompatible: true,
-    },
+    amount: "0.0001",
+    token: "cUSD",
+    tokenAddress: CUSD_ADDRESS,
+    network: "Celo Mainnet",
+    chainId: 42220,
+    miniPayCompatible: true,
+    description: "0.0001 cUSD per tutoring session",
   }
 }
 
-// Verify that a payment tx hash is valid and paid the right amount
 export async function verifyPayment(
   txHash: string,
   expectedRecipient: string,
@@ -51,14 +27,10 @@ export async function verifyPayment(
       return { valid: false, payer: null, error: "Transaction failed or not found" }
     }
 
-    // Decode Transfer event from cUSD contract
     const transferTopic = ethers.utils.id("Transfer(address,address,uint256)")
-    const cusdInterface = new ethers.utils.Interface([
+    const iface = new ethers.utils.Interface([
       "event Transfer(address indexed from, address indexed to, uint256 value)",
     ])
-
-    let payer: string | null = null
-    let paid = false
 
     for (const log of receipt.logs) {
       if (
@@ -66,27 +38,27 @@ export async function verifyPayment(
         log.topics[0] === transferTopic
       ) {
         try {
-          const parsed = cusdInterface.parseLog(log)
-          const to = parsed.args.to.toLowerCase()
-          const value: ethers.BigNumber = parsed.args.value
-
+          const parsed = iface.parseLog(log)
           if (
-            to === expectedRecipient.toLowerCase() &&
-            value.gte(SESSION_PRICE)
+            parsed.args.to.toLowerCase() === expectedRecipient.toLowerCase() &&
+            parsed.args.value.gte(SESSION_PRICE_CUSD)
           ) {
-            payer = parsed.args.from
-            paid = true
-            break
+            return { valid: true, payer: parsed.args.from }
           }
         } catch {}
       }
     }
 
-    if (!paid) {
-      return { valid: false, payer: null, error: "Payment not found or insufficient amount" }
+    // Also check native CELO payment
+    const tx = await provider.getTransaction(txHash)
+    if (
+      tx?.to?.toLowerCase() === expectedRecipient.toLowerCase() &&
+      tx.value.gte(ethers.utils.parseEther("0.0001"))
+    ) {
+      return { valid: true, payer: tx.from }
     }
 
-    return { valid: true, payer }
+    return { valid: false, payer: null, error: "No valid payment found" }
   } catch (err: any) {
     return { valid: false, payer: null, error: err.message }
   }

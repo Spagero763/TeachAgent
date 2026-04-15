@@ -1,46 +1,45 @@
-import { ethers } from "ethers"
+import express from "express"
+import cors from "cors"
 import dotenv from "dotenv"
+import path from "path"
+
 dotenv.config()
 
-export const provider = new ethers.providers.JsonRpcProvider(
-  process.env.CELO_RPC || "https://forno.celo.org"
-)
+const app = express()
+const PORT = process.env.PORT || 3001
 
-const privateKey = process.env.AGENT_PRIVATE_KEY
-export const agentWallet = privateKey
-  ? new ethers.Wallet(privateKey, provider)
-  : ethers.Wallet.createRandom().connect(provider)
+app.use(cors())
+app.use(express.json())
+app.use("/.well-known", express.static(path.join(__dirname, "../public/.well-known")))
 
-export const AGENT_CONFIGURED = !!privateKey
+app.get("/", (_req, res) => {
+  res.json({
+    agent: "TeachAgent",
+    version: "1.0.0",
+    status: "online",
+    description: "AI agent for educator reputation on Celo",
+    network: "Celo Mainnet",
+    agentId: process.env.AGENT_ID || "1",
+    endpoints: [
+      "GET  /health",
+      "GET  /agent/identity",
+      "GET  /agent/reputation",
+      "POST /agent/score",
+      "POST /agent/session",
+      "POST /agent/register",
+    ],
+  })
+})
 
-export const AGENT_REGISTRY_ABI = [
-  "function register(string memory _agentURI) external returns (uint256 agentId)",
-  "function giveFeedback(uint256 _agentId, int8 _score, string memory _tag) external",
-  "function getReputation(uint256 _agentId) external view returns (int256 total, uint256 count, int256 average)",
-  "function getOwnerAgents(address _owner) external view returns (uint256[] memory)",
-  "function agents(uint256) external view returns (address owner, string memory agentURI, uint256 registeredAt, bool active)",
-  "function agentCount() external view returns (uint256)",
-  "event AgentRegistered(uint256 indexed agentId, address indexed owner, string agentURI)",
-  "event FeedbackGiven(uint256 indexed agentId, address indexed from, int8 score, string tag)",
-]
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() })
+})
 
-export const EDUPAY_ABI = [
-  "function courses(uint256) external view returns (address tutor, string memory title, string memory description, bool isActive, uint256 chapterCount, uint256 totalEarned)",
-  "function tutorEarnings(address) external view returns (uint256)",
-  "function courseCount() external view returns (uint256)",
-  "function getTutorCourses(address _tutor) external view returns (uint256[])",
-]
+import { agentRouter } from "./routes/agent"
+app.use("/agent", agentRouter)
 
-export const AGENT_REGISTRY_ADDRESS = "0xBe9Ddf20E2a0191232a5bf57003ea7A512851391"
+app.listen(PORT, () => {
+  console.log(`TeachAgent running on port ${PORT}`)
+})
 
-export const agentRegistry = new ethers.Contract(
-  AGENT_REGISTRY_ADDRESS,
-  AGENT_REGISTRY_ABI,
-  agentWallet
-)
-
-export const eduPayContract = new ethers.Contract(
-  process.env.EDUPAY_CONTRACT || "",
-  EDUPAY_ABI,
-  provider
-)
+export default app
