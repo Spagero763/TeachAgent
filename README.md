@@ -1,70 +1,55 @@
 # TeachAgent
 
-> AI agent for educator reputation on Celo — ERC-8004 registered
+> AI chatbot for the Celo blockchain. 0.001 CELO per question.
 
-TeachAgent scores educators using Claude AI, reads their onchain activity from EduPay, and posts reputation scores to the ERC-8004 Reputation Registry on Celo.
+**Live:** https://teach-agent.vercel.app  
+**API:** https://teachagent.onrender.com  
+**Network:** Celo Mainnet
 
-## How to Use TeachAgent
+---
 
-### Score an educator
+## What it does
+
+TeachAgent answers any question about the Celo ecosystem — smart contracts, cUSD, MiniPay, wallets, DeFi, deployment — powered by Llama 3.3 70B.
+
+Each question costs **0.001 CELO**, paid directly onchain via the TeachAgentPayment contract.
+
+---
+
+## How to use
+
+1. Open the app at teach-agent.vercel.app
+2. Click **Connect wallet** — MetaMask, Valora, or MiniPay
+3. Type your question and press **Send**
+4. Your wallet opens automatically — confirm 0.001 CELO payment
+5. Answer appears instantly after confirmation
+
+Works on mobile with MiniPay — payment triggers through the in-app browser automatically.
+
+---
+
+## API
+
+### Ask a question
 ```bash
-curl -X POST https://teachagent.onrender.com/agent/score \
-  -H "Content-Type: application/json" \
-  -d '{"tutorAddress": "0x..."}'
-```
-
-### Ask a question (with payment)
-
-**Step 1** — Call without txHash to get payment requirements:
-```bash
+# Step 1 — will return 402 with payment info
 curl -X POST https://teachagent.onrender.com/agent/session \
   -H "Content-Type: application/json" \
-  -d '{"question": "What is a smart contract?", "courseTitle": "Blockchain 101"}'
-# Returns 402 with payTo address
-```
+  -d '{"question":"What is cUSD?","studentAddress":"0x..."}'
 
-**Step 2** — Send 0.001 cUSD to the agent wallet on Celo
+# Step 2 — pay 0.001 CELO to contract, get txHash
 
-**Step 3** — Re-call with txHash:
-```bash
+# Step 3 — re-call with txHash
 curl -X POST https://teachagent.onrender.com/agent/session \
   -H "Content-Type: application/json" \
-  -d '{
-    "question": "What is a smart contract?",
-    "courseTitle": "Blockchain 101",
-    "txHash": "0x..."
-  }'
+  -d '{"question":"What is cUSD?","studentAddress":"0x...","txHash":"0x..."}'
 ```
 
-### MiniPay compatible
-TeachAgent accepts cUSD payments from MiniPay on Celo. Open MiniPay → send 0.001 cUSD to `[agent wallet address]` → use the tx hash.
+---
 
-## Live Endpoints
+## Contracts
 
-| Endpoint | Description |
+| Contract | Address |
 |---|---|
-| `GET /health` | Agent status |
-| `GET /agent/identity` | Agent ERC-8004 identity |
-| `GET /agent/reputation` | Onchain reputation score |
-| `POST /agent/score` | Score an educator (free) |
-| `POST /agent/session` | Tutoring session (0.001 cUSD) |
-| `POST /agent/register` | Register on AgentRegistry |
-
-
-## ERC-8004 Identity
-
-- Identity Registry: `0x8004A818BFB912233c491871b3d84c89A494BD9e`
-- Reputation Registry: `0x8004B663056A597Dffe9eCcC1965A193B7388713`
-- Network: Celo Mainnet (Chain 42220)
-
-## EduPay Integration
-
-Reads live data from EduPay contract:
-`0xDBA56f8d23c69Dbd9659be4ca18133962BC86191`
-
-## Score an Educator
-```bash
-curl -X POST https://teachagent-production.up.railway.app/agent/score \
-  -H "Content-Type: application/json" \
-  -d '{"tutorAddress": "0x..."}'
-```
+| TeachAgentPayment | `YOUR_DEPLOYED_ADDRESS` |
+| AgentRegistry | `0xBe9Ddf20E2a0191232a5bf57003ea7A512851391` |

@@ -61,102 +61,113 @@ export default function Home() {
   }
 
   async function handleSend() {
-    const q = input.trim()
-    if (!q || loading) return
+  const q = input.trim()
+  if (!q || loading) return
 
-    if (!isConnected || !address) {
-      open()
+  if (!isConnected || !address) {
+    open()
+    return
+  }
+
+  setShowHero(false)
+  setInput("")
+  addMessage({ role: "user", text: q })
+  setLoading(true)
+  setStatus("")
+
+  try {
+    const r1 = await fetch(`${AGENT_URL}/agent/session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: q, studentAddress: address }),
+    }).catch(() => null)
+
+    if (!r1) {
+      addMessage({ role: "system", text: "⚠️ Backend is starting up. Please wait 30 seconds and try again." })
+      setLoading(false)
       return
     }
 
-    setShowHero(false)
-    setInput("")
-    addMessage({ role: "user", text: q })
-    setLoading(true)
-    setStatus("")
-
-    try {
-      // First check if payment needed
-      const r1 = await fetch(`${AGENT_URL}/agent/session`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q, studentAddress: address }),
-      }).catch(() => null)
-
-      if (!r1) {
-        addMessage({ role: "system", text: "⚠️ Backend is waking up (Render free tier). Please try again in 30 seconds." })
-        setLoading(false)
-        setStatus("")
-        return
-      }
-
-      if (r1.status !== 402) {
-        const d = await r1.json()
-        addMessage({ role: "agent", text: d.answer || d.error || "No response" })
-        setLoading(false)
-        return
-      }
-
-      // Payment required — trigger wallet
-      if (!walletProvider) {
-        addMessage({ role: "system", text: "No wallet provider. Please reconnect." })
-        setLoading(false)
-        return
-      }
-
-      setStatus("Opening wallet — please confirm 0.001 CELO payment...")
-
-      const web3Provider = new ethers.providers.Web3Provider(walletProvider as any)
-
-      // Switch to Celo mainnet if needed
-      try {
-        await web3Provider.send("wallet_switchEthereumChain", [{ chainId: "0xa4ec" }])
-      } catch {}
-
-      const signer = web3Provider.getSigner()
-      const signerAddress = await signer.getAddress()
-
-      const contract = new ethers.Contract(TEACH_AGENT_CONTRACT, CONTRACT_ABI, signer)
-      const price = ethers.utils.parseEther("0.001")
-
-      setStatus("Waiting for confirmation...")
-      const tx = await contract.payForQuestion({ value: price })
-
-      setStatus("Confirming on Celo...")
-      const receipt = await tx.wait()
-
-      setStatus("Getting your answer...")
-
-      const r2 = await fetch(`${AGENT_URL}/agent/session`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question: q,
-          studentAddress: signerAddress,
-          txHash: receipt.transactionHash,
-        }),
-      })
-
-      const d2 = await r2.json()
-      addMessage({
-        role: "agent",
-        text: d2.answer || d2.error || "No response",
-        txHash: receipt.transactionHash,
-      })
-    } catch (err: any) {
-      if (err?.code === 4001 || err?.code === "ACTION_REJECTED") {
-        addMessage({ role: "system", text: "Payment cancelled." })
-      } else if (err?.message?.includes("insufficient funds")) {
-        addMessage({ role: "system", text: "Insufficient CELO balance. You need at least 0.001 CELO + gas fees." })
-      } else {
-        addMessage({ role: "system", text: `Error: ${err?.message || "Unknown error"}` })
-      }
-    } finally {
+    if (r1.status !== 402) {
+      const d = await r1.json()
+      addMessage({ role: "agent", text: d.answer || d.error || "No response" })
       setLoading(false)
-      setStatus("")
-      inputRef.current?.focus()
+      return
     }
+
+    setStatus("Preparing payment...")
+
+    // Detect provider — MiniPay or WalletConnect
+    const eth = (window as any).ethereum
+    let web3Provider: ethers.providers.Web3Provider
+
+    if (eth?.isMiniPay) {
+      // MiniPay: use window.ethereum directly
+      web3Provider = new ethers.providers.Web3Provider(eth)
+    } else if (walletProvider) {
+      web3Provider = new ethers.providers.Web3Provider(walletProvider as any)
+    } else {
+      addMessage({ role: "system", text: "No wallet provider. Please reconnect your wallet." })
+      setLoading(false)
+      return
+    }
+
+    setStatus("Confirm 0.001 CELO payment in your wallet...")
+
+    // Switch to Celo mainnet
+    try {
+      await web3Provider.send("wallet_switchEthereumChain", [{ chainId: "0xa4ec" }])
+    } catch {}
+
+    const signer = web3Provider.getSigner()
+    const signerAddress = await signer.getAddress()
+
+    const contract = new ethers.Contract(
+      TEACH_AGENT_CONTRACT,
+      ["function payForQuestion() external payable returns (uint256 questionId)"],
+      signer
+    )
+
+    setStatus("Waiting for wallet confirmation...")
+    const tx = await contract.payForQuestion({
+      value: ethers.utils.parseEther("0.001"),
+    })
+
+    setStatus("Confirming on Celo...")
+    const receipt = await tx.wait()
+
+    setStatus("Getting your answer...")
+
+    const r2 = await fetch(`${AGENT_URL}/agent/session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        question: q,
+        studentAddress: signerAddress,
+        txHash: receipt.transactionHash,
+      }),
+    })
+
+    const d2 = await r2.json()
+    addMessage({
+      role: "agent",
+      text: d2.answer || d2.error || "No response",
+      txHash: receipt.transactionHash,
+    })
+  } catch (err: any) {
+    if (err?.code === 4001 || err?.code === "ACTION_REJECTED") {
+      addMessage({ role: "system", text: "Payment cancelled." })
+    } else if (err?.message?.includes("insufficient funds")) {
+      addMessage({ role: "system", text: "Insufficient CELO. You need at least 0.001 CELO + gas." })
+    } else {
+      addMessage({ role: "system", text: `Error: ${err?.message || "Unknown error"}` })
+    }
+  } finally {
+    setLoading(false)
+    setStatus("")
+    inputRef.current?.focus()
   }
+}
 
   return (
     <div style={{ background: "#080808", minHeight: "100vh", display: "flex", flexDirection: "column" }}>

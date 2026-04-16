@@ -21,3 +21,10 @@ body {
 ::-webkit-scrollbar { width: 1px; }
 ::-webkit-scrollbar-track { background: #080808; }
 ::-webkit-scrollbar-thumb { background: rgba(129,140,248,0.4); }
+
+@media (max-width: 768px) {
+  nav { padding: 16px 20px !important; }
+  div[style*="padding: 0 32px"] { padding: 0 20px !important; }
+  div[style*="padding: 0 40px"] { padding: 0 20px !important; }
+  h1 { font-size: clamp(3rem, 12vw, 5rem) !important; }
+}
