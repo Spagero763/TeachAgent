@@ -47,46 +47,6 @@ function ruleBasedScore(data: {
   }
 }
 
-export async function scoreEducator(data: {
-  tutorAddress: string
-  courseCount: number
-  totalEarned: string
-  courseDetails: Array<{ title: string; description: string; chapterCount: number }>
-}): Promise<ScoringResult> {
-  if (!GROQ_API_KEY) return ruleBasedScore(data)
-
-  const prompt = `You are TeachAgent. Score this educator 0-100 based on their Celo blockchain profile.
-
-Tutor: ${data.tutorAddress}
-Courses: ${data.courseCount}
-Earned: ${data.totalEarned} cUSD
-Content: ${JSON.stringify(data.courseDetails)}
-
-Respond ONLY with valid JSON, no markdown:
-{"score":75,"grade":"B","summary":"Two sentences.","strengths":["s1","s2"],"improvements":["i1","i2"],"recommendation":"One sentence."}`
-
-  try {
-    const res = await axios.post(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        model: "llama-3.3-70b-versatile",
-        max_tokens: 400,
-        temperature: 0.2,
-        messages: [
-          { role: "system", content: "Respond only with valid JSON. No markdown, no explanation." },
-          { role: "user", content: prompt },
-        ],
-      },
-      { headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" } }
-    )
-    const text = res.data.choices[0].message.content.replace(/```json|```/g, "").trim()
-    return JSON.parse(text) as ScoringResult
-  } catch (err: any) {
-    console.warn("Groq fallback:", err?.message)
-    return ruleBasedScore(data)
-  }
-}
-
 export async function runTutoringSession(data: {
   question: string
   courseTitle: string
