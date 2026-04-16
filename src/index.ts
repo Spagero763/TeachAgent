@@ -15,19 +15,10 @@ app.use("/.well-known", express.static(path.join(__dirname, "../public/.well-kno
 app.get("/", (_req, res) => {
   res.json({
     agent: "TeachAgent",
-    version: "1.0.0",
+    version: "2.0.0",
     status: "online",
-    description: "AI agent for educator reputation on Celo",
+    description: "Celo blockchain AI chatbot — 0.001 CELO per question",
     network: "Celo Mainnet",
-    agentId: process.env.AGENT_ID || "1",
-    endpoints: [
-      "GET  /health",
-      "GET  /agent/identity",
-      "GET  /agent/reputation",
-      "POST /agent/score",
-      "POST /agent/session",
-      "POST /agent/register",
-    ],
   })
 })
 

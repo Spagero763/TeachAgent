@@ -4,76 +4,51 @@ dotenv.config()
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || ""
 
-export interface ScoringResult {
-  score: number
-  grade: string
-  summary: string
-  strengths: string[]
-  improvements: string[]
-  recommendation: string
-}
-
-function ruleBasedScore(data: {
-  courseCount: number
-  totalEarned: string
-  courseDetails: Array<{ title: string; description: string; chapterCount: number }>
-}): ScoringResult {
-  let score = 0
-  score += Math.min(data.courseCount * 10, 30)
-  const totalChapters = data.courseDetails.reduce((s, c) => s + c.chapterCount, 0)
-  score += Math.min(totalChapters * 5, 30)
-  const earned = parseFloat(data.totalEarned) || 0
-  if (earned > 10) score += 25
-  else if (earned > 5) score += 20
-  else if (earned > 1) score += 15
-  else if (earned > 0) score += 10
-  const avgLen = data.courseDetails.length > 0
-    ? data.courseDetails.reduce((s, c) => s + c.description.length, 0) / data.courseDetails.length
-    : 0
-  if (avgLen > 100) score += 15
-  else if (avgLen > 50) score += 10
-  else if (avgLen > 20) score += 5
-  score = Math.min(score, 100)
-  const grade = score >= 90 ? "A" : score >= 80 ? "B" : score >= 70 ? "C" : score >= 60 ? "D" : "F"
-  return {
-    score, grade,
-    summary: `Educator has ${data.courseCount} course(s) with ${totalChapters} chapters and ${data.totalEarned} cUSD earned.`,
-    strengths: [
-      data.courseCount > 0 ? `Published ${data.courseCount} course(s)` : "Registered educator",
-      totalChapters > 0 ? `${totalChapters} lesson(s) available` : "Ready to create",
-    ],
-    improvements: ["Add more courses", "Grow student base"],
-    recommendation: score >= 70 ? "Solid educator with good content." : "Emerging educator — growing their catalog.",
-  }
-}
-
-export async function runTutoringSession(data: {
-  question: string
-  courseTitle: string
-  studentAddress: string
-}): Promise<string> {
+export async function askCelo(question: string): Promise<string> {
   if (!GROQ_API_KEY) {
-    return "TeachAgent AI is currently offline. Please try again shortly."
+    return "TeachAgent AI is offline. Please try again later."
   }
   try {
     const res = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
       {
         model: "llama-3.3-70b-versatile",
-        max_tokens: 800,
+        max_tokens: 1000,
         temperature: 0.7,
         messages: [
           {
             role: "system",
-            content: `You are TeachAgent, an AI tutor on Celo blockchain. Course: "${data.courseTitle}". Student: ${data.studentAddress}. Be clear and practical.`,
+            content: `You are TeachAgent, an expert AI assistant for the Celo blockchain ecosystem. You know everything about:
+- Celo blockchain architecture and history
+- cUSD, cEUR, cKES and Mento stablecoins
+- CELO token and staking
+- MiniPay wallet and Opera Mini integration
+- Valora wallet
+- Smart contract development on Celo with Solidity
+- EduPay — a pay-per-lesson platform on Celo
+- DeFi on Celo (Uniswap, Curve, Aave)
+- Celo's proof-of-stake consensus
+- Building and deploying dApps on Celo
+- Foundry, Hardhat tooling for Celo
+- WalletConnect and Reown AppKit on Celo
+- ERC-20 tokens on Celo
+- Farcaster MiniApps on Celo
+- Celo's carbon-negative mission
+
+Give clear, practical, accurate answers. Be friendly and educational. When relevant, reference real Celo resources like docs.celo.org.`,
           },
-          { role: "user", content: data.question },
+          { role: "user", content: question },
         ],
       },
-      { headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" } }
+      {
+        headers: {
+          Authorization: `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
     )
     return res.data.choices[0].message.content
   } catch (err: any) {
-    throw new Error(`AI error: ${err?.message}`)
+    throw new Error(`AI error: ${err?.response?.data?.error?.message || err.message}`)
   }
 }

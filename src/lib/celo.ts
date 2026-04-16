@@ -1,45 +1,21 @@
-import express from "express"
-import cors from "cors"
+import { ethers } from "ethers"
 import dotenv from "dotenv"
-import path from "path"
-
 dotenv.config()
 
-const app = express()
-const PORT = process.env.PORT || 3001
+export const provider = new ethers.providers.JsonRpcProvider(
+  process.env.CELO_RPC || "https://forno.celo.org"
+)
 
-app.use(cors())
-app.use(express.json())
-app.use("/.well-known", express.static(path.join(__dirname, "../public/.well-known")))
+const privateKey = process.env.AGENT_PRIVATE_KEY
+export const agentWallet = privateKey
+  ? new ethers.Wallet(privateKey, provider)
+  : ethers.Wallet.createRandom().connect(provider)
 
-app.get("/", (_req, res) => {
-  res.json({
-    agent: "TeachAgent",
-    version: "1.0.0",
-    status: "online",
-    description: "AI agent for educator reputation on Celo",
-    network: "Celo Mainnet",
-    agentId: process.env.AGENT_ID || "1",
-    endpoints: [
-      "GET  /health",
-      "GET  /agent/identity",
-      "GET  /agent/reputation",
-      "POST /agent/score",
-      "POST /agent/session",
-      "POST /agent/register",
-    ],
-  })
-})
+export const TEACH_AGENT_CONTRACT = process.env.TEACH_AGENT_CONTRACT || ""
 
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() })
-})
-
-import { agentRouter } from "./routes/agent"
-app.use("/agent", agentRouter)
-
-app.listen(PORT, () => {
-  console.log(`TeachAgent running on port ${PORT}`)
-})
-
-export default app
+export const TEACH_AGENT_ABI = [
+  "event QuestionPaid(address indexed student, uint256 indexed questionId, uint256 amount)",
+  "function payForQuestion() external payable returns (uint256 questionId)",
+  "function pricePerQuestion() external view returns (uint256)",
+  "function totalQuestions() external view returns (uint256)",
+]
