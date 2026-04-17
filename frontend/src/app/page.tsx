@@ -14,6 +14,7 @@ const AgentCanvas = dynamic(
 
 const AGENT_URL = "https://teachagent.onrender.com"
 
+// Replace with your deployed contract address
 const TEACH_AGENT_CONTRACT = process.env.NEXT_PUBLIC_TEACH_AGENT_CONTRACT || "0xYOUR_CONTRACT_ADDRESS"
 
 const CONTRACT_ABI = [
@@ -36,110 +37,7 @@ type Message = {
   txHash?: string
 }
 
-/* =======================
-   ✅ FORMATTER (Fix 6)
-======================= */
-
-function formatInline(text: string): React.ReactNode {
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g)
-  return parts.map((part, i) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={i} style={{ fontWeight: 600, color: "#e8e4dc" }}>{part.slice(2, -2)}</strong>
-    }
-    if (part.startsWith("*") && part.endsWith("*")) {
-      return <em key={i}>{part.slice(1, -1)}</em>
-    }
-    if (part.startsWith("`") && part.endsWith("`")) {
-      return (
-        <code key={i} style={{ background: "rgba(255,255,255,0.08)", padding: "1px 6px", fontFamily: "monospace", fontSize: 12 }}>
-          {part.slice(1, -1)}
-        </code>
-      )
-    }
-    return part
-  })
-}
-
-function formatAgentText(text: string): React.ReactNode {
-  const paragraphs = text.split(/\n\n+/)
-
-  return (
-    <div>
-      {paragraphs.map((para, pi) => {
-
-        if (para.includes("\n• ") || para.startsWith("• ")) {
-          const lines = para.split("\n").filter(l => l.trim())
-          return (
-            <div key={pi} style={{ marginBottom: 16 }}>
-              {lines.map((line, li) => {
-                if (line.startsWith("• ") || line.startsWith("- ")) {
-                  return (
-                    <div key={li} style={{ display: "flex", gap: 10, marginBottom: 6 }}>
-                      <span style={{ color: "#818cf8" }}>·</span>
-                      <span style={{ fontSize: 14, color: "rgba(232,228,220,0.75)" }}>
-                        {formatInline(line.replace(/^[•\-]\s*/, ""))}
-                      </span>
-                    </div>
-                  )
-                }
-                return <p key={li}>{formatInline(line)}</p>
-              })}
-            </div>
-          )
-        }
-
-        if (para.includes("```")) {
-          const code = para.replace(/```\w*\n?/g, "").replace(/```/g, "").trim()
-          return (
-            <pre key={pi} style={{ background: "rgba(255,255,255,0.04)", padding: 16 }}>
-              <code>{code}</code>
-            </pre>
-          )
-        }
-
-        if (para.startsWith("# ")) {
-          return <h2 key={pi}>{para.replace(/^#\s*/, "")}</h2>
-        }
-        if (para.startsWith("## ")) {
-          return <h3 key={pi}>{para.replace(/^##\s*/, "")}</h3>
-        }
-        if (para.startsWith("### ")) {
-          return <h4 key={pi}>{para.replace(/^###\s*/, "")}</h4>
-        }
-
-        if (/^\d+\.\s/.test(para)) {
-          const lines = para.split("\n")
-          return (
-            <div key={pi}>
-              {lines.map((line, li) => {
-                const match = line.match(/^(\d+)\.\s(.*)/)
-                if (match) {
-                  return (
-                    <div key={li} style={{ display: "flex", gap: 10 }}>
-                      <span style={{ color: "#818cf8" }}>{match[1]}.</span>
-                      <span>{formatInline(match[2])}</span>
-                    </div>
-                  )
-                }
-                return <p key={li}>{formatInline(line)}</p>
-              })}
-            </div>
-          )
-        }
-
-        if (para.trim()) {
-          return <p key={pi}>{formatInline(para)}</p>
-        }
-
-        return null
-      })}
-    </div>
-  )
-}
-
-/* =======================
-   COMPONENT
-======================= */
+function T(style: React.CSSProperties) { return style }
 
 export default function Home() {
   const { open } = useAppKit()
@@ -163,55 +61,372 @@ export default function Home() {
   }
 
   async function handleSend() {
-    const q = input.trim()
-    if (!q || loading) return
+  const q = input.trim()
+  if (!q || loading) return
 
-    if (!isConnected || !address) {
-      open()
+  if (!isConnected || !address) {
+    open()
+    return
+  }
+
+  setShowHero(false)
+  setInput("")
+  addMessage({ role: "user", text: q })
+  setLoading(true)
+  setStatus("")
+
+  try {
+    // Check if payment needed
+    const r1 = await fetch(`${AGENT_URL}/agent/session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: q, studentAddress: address }),
+    }).catch(() => null)
+
+    if (!r1) {
+      addMessage({ role: "system", text: "⚠️ Backend is starting up (free tier). Please wait 30 seconds and try again." })
+      setLoading(false)
       return
     }
 
-    setShowHero(false)
-    setInput("")
-    addMessage({ role: "user", text: q })
-    setLoading(true)
+    if (r1.status !== 402) {
+      const d = await r1.json()
+      addMessage({ role: "agent", text: d.answer || d.error || "No response" })
+      setLoading(false)
+      return
+    }
 
-    try {
-      const r = await fetch(`${AGENT_URL}/agent/session`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q, studentAddress: address }),
+    setStatus("Preparing payment...")
+
+    const eth = (window as any).ethereum
+    const isMiniPay = !!eth?.isMiniPay
+
+    let txHash: string
+    let signerAddress = address
+
+    if (isMiniPay) {
+      // MiniPay: use raw eth_sendTransaction with explicit value
+      setStatus("Confirm 0.001 CELO payment in MiniPay...")
+
+      // Encode payForQuestion() selector: 0xe4849b32
+      const functionSelector = "0xe4849b32"
+      const valueWei = ethers.utils.parseEther("0.001")
+      const valueHex = "0x" + valueWei.toBigInt().toString(16)
+
+      // Get current address from MiniPay
+      const accounts: string[] = await eth.request({ method: "eth_requestAccounts" })
+      signerAddress = accounts[0]
+
+      // Estimate gas first
+      let gasHex = "0x30000" // 196608 - safe default
+      try {
+        const gasEst = await eth.request({
+          method: "eth_estimateGas",
+          params: [{
+            from: signerAddress,
+            to: TEACH_AGENT_CONTRACT,
+            value: valueHex,
+            data: functionSelector,
+          }]
+        })
+        gasHex = "0x" + (parseInt(gasEst, 16) * 2).toString(16)
+      } catch {}
+
+      // Send raw transaction
+      txHash = await eth.request({
+        method: "eth_sendTransaction",
+        params: [{
+          from: signerAddress,
+          to: TEACH_AGENT_CONTRACT,
+          value: valueHex,
+          data: functionSelector,
+          gas: gasHex,
+        }]
       })
 
-      const d = await r.json()
-      addMessage({ role: "agent", text: d.answer || "No response" })
-    } catch {
-      addMessage({ role: "system", text: "Error occurred" })
-    } finally {
-      setLoading(false)
+      setStatus("Confirming on Celo...")
+
+      // Wait for receipt
+      const miniPayProvider = new ethers.providers.Web3Provider(eth)
+      const receipt = await miniPayProvider.waitForTransaction(txHash, 1, 60000)
+      if (!receipt || receipt.status !== 1) {
+        throw new Error("Transaction failed on chain")
+      }
+    } else {
+      // WalletConnect / MetaMask
+      if (!walletProvider) {
+        addMessage({ role: "system", text: "No wallet provider. Please reconnect." })
+        setLoading(false)
+        return
+      }
+
+      setStatus("Confirm 0.001 CELO payment in your wallet...")
+
+      const web3Provider = new ethers.providers.Web3Provider(walletProvider as any)
+
+      // Switch to Celo
+      try {
+        await web3Provider.send("wallet_switchEthereumChain", [{ chainId: "0xa4ec" }])
+      } catch {}
+
+      const signer = web3Provider.getSigner()
+      signerAddress = await signer.getAddress()
+
+      const contract = new ethers.Contract(
+        TEACH_AGENT_CONTRACT,
+        ["function payForQuestion() external payable returns (uint256 questionId)"],
+        signer
+      )
+
+      setStatus("Waiting for wallet confirmation...")
+      const tx = await contract.payForQuestion({
+        value: ethers.utils.parseEther("0.001"),
+        gasLimit: 200000,
+      })
+
+      setStatus("Confirming on Celo...")
+      const receipt = await tx.wait()
+      txHash = receipt.transactionHash
     }
+
+    setStatus("Getting your answer...")
+
+    const r2 = await fetch(`${AGENT_URL}/agent/session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        question: q,
+        studentAddress: signerAddress,
+        txHash,
+      }),
+    })
+
+    const d2 = await r2.json()
+    addMessage({
+      role: "agent",
+      text: d2.answer || d2.error || "No response",
+      txHash,
+    })
+  } catch (err: any) {
+    const msg = err?.message || ""
+    if (err?.code === 4001 || err?.code === "ACTION_REJECTED" || msg.includes("rejected")) {
+      addMessage({ role: "system", text: "Payment cancelled." })
+    } else if (msg.includes("insufficient funds") || msg.includes("insufficient balance")) {
+      addMessage({ role: "system", text: "Insufficient CELO balance. You need at least 0.001 CELO + gas fees on Celo mainnet." })
+    } else if (msg.includes("Pay at least")) {
+      addMessage({ role: "system", text: "Payment amount too low. Please try again — 0.001 CELO required." })
+    } else {
+      addMessage({ role: "system", text: `Error: ${msg || "Unknown error"}` })
+    }
+  } finally {
+    setLoading(false)
+    setStatus("")
+    inputRef.current?.focus()
   }
+}
 
   return (
-    <div>
+    <div style={{ background: "#080808", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <Navbar />
 
-      <div>
+      {/* Hero — shown until first message */}
+      <AnimatePresence>
+        {showHero && (
+          <motion.section
+            exit={{ opacity: 0, y: -40 }}
+            transition={{ duration: 0.6 }}
+            style={{ position: "relative", height: "100vh", display: "flex", alignItems: "flex-end", overflow: "hidden", flexShrink: 0 }}
+          >
+            {/* 3D Canvas */}
+            <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
+              <AgentCanvas />
+            </div>
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, #080808 25%, transparent 70%)", zIndex: 1, pointerEvents: "none" }} />
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to right, #080808 20%, transparent 60%)", zIndex: 1, pointerEvents: "none" }} />
+
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 1, ease: [0.16, 1, 0.3, 1] }}
+              style={{ position: "relative", zIndex: 2, padding: "0 40px 80px", maxWidth: 640 }}
+            >
+              <div style={{ fontSize: 10, fontWeight: 300, letterSpacing: "0.28em", textTransform: "uppercase", color: "#818cf8", marginBottom: 24 }}>
+                Celo AI · 0.001 CELO per question
+              </div>
+              <h1 style={{
+                fontSize: "clamp(3.5rem, 10vw, 7rem)",
+                fontWeight: 100, letterSpacing: "-0.03em",
+                lineHeight: 0.92, color: "#e8e4dc",
+                textTransform: "uppercase", marginBottom: 24,
+              }}>
+                Teach<br />
+                <span style={{ WebkitTextStroke: "1px rgba(129,140,248,0.6)", color: "transparent" }}>Agent</span>
+              </h1>
+              <p style={{ fontSize: 15, fontWeight: 300, color: "rgba(232,228,220,0.45)", lineHeight: 1.7, marginBottom: 40, maxWidth: 400 }}>
+                Your AI guide to the Celo blockchain. Ask anything — smart contracts, wallets, cUSD, MiniPay, DeFi.
+              </p>
+
+              {/* Example chips */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 32 }}>
+                {EXAMPLES.slice(0, 4).map((q, i) => (
+                  <button key={i} onClick={() => { setInput(q); setShowHero(false); inputRef.current?.focus() }}
+                    style={{ fontSize: 11, fontWeight: 300, color: "rgba(232,228,220,0.5)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "8px 14px", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s", borderRadius: 0 }}
+                    onMouseEnter={e => { e.currentTarget.style.color = "#818cf8"; e.currentTarget.style.borderColor = "rgba(129,140,248,0.3)" }}
+                    onMouseLeave={e => { e.currentTarget.style.color = "rgba(232,228,220,0.5)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)" }}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => { setShowHero(false); inputRef.current?.focus() }}
+                style={{ fontSize: 11, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase", color: "#e8e4dc", background: "rgba(79,70,229,0.7)", border: "none", padding: "14px 32px", cursor: "pointer", fontFamily: "inherit" }}
+              >
+                Start asking →
+              </button>
+            </motion.div>
+          </motion.section>
+        )}
+      </AnimatePresence>
+
+      {/* Chat area */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", maxWidth: 800, width: "100%", margin: "0 auto", padding: "0 20px", paddingTop: showHero ? 0 : 100, paddingBottom: 180 }}>
+
+        {/* Messages */}
         {messages.map((msg, i) => (
-          <div key={i}>
-            {msg.role === "agent"
-              ? formatAgentText(msg.text) // ✅ FIX APPLIED
-              : msg.text}
-          </div>
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            style={{
+              marginBottom: 24,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: msg.role === "user" ? "flex-end" : "flex-start",
+            }}
+          >
+            <div style={{
+              fontSize: 9, fontWeight: 300, letterSpacing: "0.22em", textTransform: "uppercase",
+              marginBottom: 6,
+              color: msg.role === "user" ? "rgba(129,140,248,0.5)" : msg.role === "system" ? "rgba(232,228,220,0.2)" : "rgba(232,228,220,0.2)",
+            }}>
+              {msg.role === "user" ? "You" : msg.role === "system" ? "System" : "TeachAgent"}
+            </div>
+            <div style={{
+              maxWidth: "85%",
+              padding: "14px 18px",
+              background: msg.role === "user"
+                ? "rgba(79,70,229,0.15)"
+                : msg.role === "system"
+                  ? "rgba(255,255,255,0.02)"
+                  : "rgba(255,255,255,0.04)",
+              border: `1px solid ${msg.role === "user" ? "rgba(129,140,248,0.2)" : "rgba(255,255,255,0.06)"}`,
+              fontSize: 14, fontWeight: 300,
+              color: msg.role === "user" ? "#c7d2fe" : msg.role === "system" ? "rgba(232,228,220,0.4)" : "rgba(232,228,220,0.75)",
+              lineHeight: 1.8, whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+            }}>
+              {msg.text}
+            </div>
+            {msg.txHash && (
+              <a href={`https://celoscan.io/tx/${msg.txHash}`} target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 9, color: "rgba(129,140,248,0.4)", marginTop: 4, textDecoration: "none", letterSpacing: "0.1em" }}
+              >
+                View payment on Celoscan →
+              </a>
+            )}
+          </motion.div>
         ))}
+
+        {/* Loading */}
+        {loading && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 9, fontWeight: 300, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(232,228,220,0.2)", marginBottom: 6 }}>TeachAgent</div>
+            <div style={{ padding: "14px 18px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", display: "inline-block" }}>
+              <motion.span
+                animate={{ opacity: [0.3, 1, 0.3] }}
+                transition={{ repeat: Infinity, duration: 1.5 }}
+                style={{ fontSize: 12, fontWeight: 300, color: "#818cf8" }}
+              >
+                {status || "Thinking..."}
+              </motion.span>
+            </div>
+          </motion.div>
+        )}
+
+        <div ref={bottomRef} />
       </div>
 
-      <textarea
-        ref={inputRef}
-        value={input}
-        onChange={e => setInput(e.target.value)}
-      />
-      <button onClick={handleSend}>Send</button>
+      {/* Fixed input */}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50,
+        background: "rgba(8,8,8,0.96)",
+        backdropFilter: "blur(20px)",
+        borderTop: "1px solid rgba(255,255,255,0.05)",
+        padding: "16px 20px",
+      }}>
+        <div style={{ maxWidth: 800, margin: "0 auto" }}>
+          {!isConnected && (
+            <div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 11, fontWeight: 300, color: "rgba(232,228,220,0.35)" }}>
+                Connect wallet to chat — 0.001 CELO per question
+              </span>
+              <button onClick={() => open()}
+                style={{ fontSize: 10, color: "#818cf8", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.15em" }}
+              >
+                Connect →
+              </button>
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+              placeholder={isConnected ? "Ask anything about Celo..." : "Connect wallet to ask..."}
+              rows={1}
+              disabled={!isConnected || loading}
+              style={{
+                flex: 1,
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                padding: "12px 16px",
+                color: "#e8e4dc",
+                fontSize: 14, fontWeight: 300,
+                fontFamily: "inherit", outline: "none",
+                resize: "none", lineHeight: 1.5,
+                minHeight: 46, maxHeight: 120,
+                transition: "border-color 0.2s",
+              }}
+              onFocus={e => (e.currentTarget.style.borderColor = "rgba(129,140,248,0.4)")}
+              onBlur={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)")}
+            />
+            <button
+              onClick={handleSend}
+              disabled={loading || !input.trim() || !isConnected}
+              style={{
+                flexShrink: 0,
+                fontSize: 10, fontWeight: 300, letterSpacing: "0.18em", textTransform: "uppercase",
+                color: "#e8e4dc",
+                background: loading || !input.trim() || !isConnected ? "rgba(79,70,229,0.25)" : "rgba(79,70,229,0.7)",
+                border: "none", padding: "12px 20px",
+                cursor: loading || !input.trim() || !isConnected ? "default" : "pointer",
+                fontFamily: "inherit", transition: "background 0.2s",
+                whiteSpace: "nowrap",
+                minHeight: 46,
+              }}
+            >
+              {loading ? "..." : "Send"}
+            </button>
+          </div>
+          <div style={{ fontSize: 9, fontWeight: 300, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(232,228,220,0.15)", marginTop: 8 }}>
+            Enter to send · Shift+Enter for new line · 0.001 CELO per answer
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

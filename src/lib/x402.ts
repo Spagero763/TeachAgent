@@ -1,7 +1,7 @@
 import { ethers } from "ethers"
 
 export const CUSD_ADDRESS = "0x765DE816845861e75A25fCA122bb6898B8B1282a"
-export const SESSION_PRICE = ethers.utils.parseEther("0.0001") // 0.0001 cUSD
+export const SESSION_PRICE_CUSD = ethers.utils.parseEther("0.0001")
 
 export function getPaymentRequirements(agentAddress: string) {
   return {
@@ -27,7 +27,6 @@ export async function verifyPayment(
       return { valid: false, payer: null, error: "Transaction failed or not found" }
     }
 
-    // Check cUSD Transfer event
     const transferTopic = ethers.utils.id("Transfer(address,address,uint256)")
     const iface = new ethers.utils.Interface([
       "event Transfer(address indexed from, address indexed to, uint256 value)",
@@ -42,7 +41,7 @@ export async function verifyPayment(
           const parsed = iface.parseLog(log)
           if (
             parsed.args.to.toLowerCase() === expectedRecipient.toLowerCase() &&
-            parsed.args.value.gte(SESSION_PRICE)
+            parsed.args.value.gte(SESSION_PRICE_CUSD)
           ) {
             return { valid: true, payer: parsed.args.from }
           }
@@ -50,7 +49,16 @@ export async function verifyPayment(
       }
     }
 
-    return { valid: false, payer: null, error: "No valid cUSD payment found in transaction" }
+    // Also check native CELO payment
+    const tx = await provider.getTransaction(txHash)
+    if (
+      tx?.to?.toLowerCase() === expectedRecipient.toLowerCase() &&
+      tx.value.gte(ethers.utils.parseEther("0.0001"))
+    ) {
+      return { valid: true, payer: tx.from }
+    }
+
+    return { valid: false, payer: null, error: "No valid payment found" }
   } catch (err: any) {
     return { valid: false, payer: null, error: err.message }
   }
