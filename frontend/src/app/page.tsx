@@ -76,6 +76,7 @@ export default function Home() {
   setStatus("")
 
   try {
+    // Check if payment needed
     const r1 = await fetch(`${AGENT_URL}/agent/session`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -83,7 +84,7 @@ export default function Home() {
     }).catch(() => null)
 
     if (!r1) {
-      addMessage({ role: "system", text: "⚠️ Backend is starting up. Please wait 30 seconds and try again." })
+      addMessage({ role: "system", text: "⚠️ Backend is starting up (free tier). Please wait 30 seconds and try again." })
       setLoading(false)
       return
     }
@@ -97,44 +98,96 @@ export default function Home() {
 
     setStatus("Preparing payment...")
 
-    // Detect provider — MiniPay or WalletConnect
     const eth = (window as any).ethereum
-    let web3Provider: ethers.providers.Web3Provider
+    const isMiniPay = !!eth?.isMiniPay
 
-    if (eth?.isMiniPay) {
-      // MiniPay: use window.ethereum directly
-      web3Provider = new ethers.providers.Web3Provider(eth)
-    } else if (walletProvider) {
-      web3Provider = new ethers.providers.Web3Provider(walletProvider as any)
+    let txHash: string
+    let signerAddress = address
+
+    if (isMiniPay) {
+      // MiniPay: use raw eth_sendTransaction with explicit value
+      setStatus("Confirm 0.001 CELO payment in MiniPay...")
+
+      // Encode payForQuestion() selector: 0xe4849b32
+      const functionSelector = "0xe4849b32"
+      const valueWei = ethers.utils.parseEther("0.001")
+      const valueHex = "0x" + valueWei.toBigInt().toString(16)
+
+      // Get current address from MiniPay
+      const accounts: string[] = await eth.request({ method: "eth_requestAccounts" })
+      signerAddress = accounts[0]
+
+      // Estimate gas first
+      let gasHex = "0x30000" // 196608 - safe default
+      try {
+        const gasEst = await eth.request({
+          method: "eth_estimateGas",
+          params: [{
+            from: signerAddress,
+            to: TEACH_AGENT_CONTRACT,
+            value: valueHex,
+            data: functionSelector,
+          }]
+        })
+        gasHex = "0x" + (parseInt(gasEst, 16) * 2).toString(16)
+      } catch {}
+
+      // Send raw transaction
+      txHash = await eth.request({
+        method: "eth_sendTransaction",
+        params: [{
+          from: signerAddress,
+          to: TEACH_AGENT_CONTRACT,
+          value: valueHex,
+          data: functionSelector,
+          gas: gasHex,
+        }]
+      })
+
+      setStatus("Confirming on Celo...")
+
+      // Wait for receipt
+      const miniPayProvider = new ethers.providers.Web3Provider(eth)
+      const receipt = await miniPayProvider.waitForTransaction(txHash, 1, 60000)
+      if (!receipt || receipt.status !== 1) {
+        throw new Error("Transaction failed on chain")
+      }
     } else {
-      addMessage({ role: "system", text: "No wallet provider. Please reconnect your wallet." })
-      setLoading(false)
-      return
+      // WalletConnect / MetaMask
+      if (!walletProvider) {
+        addMessage({ role: "system", text: "No wallet provider. Please reconnect." })
+        setLoading(false)
+        return
+      }
+
+      setStatus("Confirm 0.001 CELO payment in your wallet...")
+
+      const web3Provider = new ethers.providers.Web3Provider(walletProvider as any)
+
+      // Switch to Celo
+      try {
+        await web3Provider.send("wallet_switchEthereumChain", [{ chainId: "0xa4ec" }])
+      } catch {}
+
+      const signer = web3Provider.getSigner()
+      signerAddress = await signer.getAddress()
+
+      const contract = new ethers.Contract(
+        TEACH_AGENT_CONTRACT,
+        ["function payForQuestion() external payable returns (uint256 questionId)"],
+        signer
+      )
+
+      setStatus("Waiting for wallet confirmation...")
+      const tx = await contract.payForQuestion({
+        value: ethers.utils.parseEther("0.001"),
+        gasLimit: 200000,
+      })
+
+      setStatus("Confirming on Celo...")
+      const receipt = await tx.wait()
+      txHash = receipt.transactionHash
     }
-
-    setStatus("Confirm 0.001 CELO payment in your wallet...")
-
-    // Switch to Celo mainnet
-    try {
-      await web3Provider.send("wallet_switchEthereumChain", [{ chainId: "0xa4ec" }])
-    } catch {}
-
-    const signer = web3Provider.getSigner()
-    const signerAddress = await signer.getAddress()
-
-    const contract = new ethers.Contract(
-      TEACH_AGENT_CONTRACT,
-      ["function payForQuestion() external payable returns (uint256 questionId)"],
-      signer
-    )
-
-    setStatus("Waiting for wallet confirmation...")
-    const tx = await contract.payForQuestion({
-      value: ethers.utils.parseEther("0.001"),
-    })
-
-    setStatus("Confirming on Celo...")
-    const receipt = await tx.wait()
 
     setStatus("Getting your answer...")
 
@@ -144,7 +197,7 @@ export default function Home() {
       body: JSON.stringify({
         question: q,
         studentAddress: signerAddress,
-        txHash: receipt.transactionHash,
+        txHash,
       }),
     })
 
@@ -152,15 +205,18 @@ export default function Home() {
     addMessage({
       role: "agent",
       text: d2.answer || d2.error || "No response",
-      txHash: receipt.transactionHash,
+      txHash,
     })
   } catch (err: any) {
-    if (err?.code === 4001 || err?.code === "ACTION_REJECTED") {
+    const msg = err?.message || ""
+    if (err?.code === 4001 || err?.code === "ACTION_REJECTED" || msg.includes("rejected")) {
       addMessage({ role: "system", text: "Payment cancelled." })
-    } else if (err?.message?.includes("insufficient funds")) {
-      addMessage({ role: "system", text: "Insufficient CELO. You need at least 0.001 CELO + gas." })
+    } else if (msg.includes("insufficient funds") || msg.includes("insufficient balance")) {
+      addMessage({ role: "system", text: "Insufficient CELO balance. You need at least 0.001 CELO + gas fees on Celo mainnet." })
+    } else if (msg.includes("Pay at least")) {
+      addMessage({ role: "system", text: "Payment amount too low. Please try again — 0.001 CELO required." })
     } else {
-      addMessage({ role: "system", text: `Error: ${err?.message || "Unknown error"}` })
+      addMessage({ role: "system", text: `Error: ${msg || "Unknown error"}` })
     }
   } finally {
     setLoading(false)
