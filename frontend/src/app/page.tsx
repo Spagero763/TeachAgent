@@ -19,7 +19,7 @@ const TEACH_AGENT_CONTRACT = "0x6a818b6E70fe033d3b70b5D0bEfFd7e32FB221cA"
 const CUSD_ADDRESS = "0x765DE816845861e75A25fCA122bb6898B8B1282a"
 
 // payForQuestion() function selector (keccak256 first 4 bytes)
-const PAY_SELECTOR = "0xe4849b32"
+const PAY_SELECTOR = "0x2567b851"
 
 // 0.001 CELO in hex
 const PAYMENT_VALUE = ethers.utils.parseEther("0.001")
