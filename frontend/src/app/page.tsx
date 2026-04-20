@@ -132,7 +132,6 @@ export default function Home() {
   ): Promise<string> {
     if (isMiniPay) {
       // MiniPay: raw eth_sendTransaction
-      // MiniPay CAN send native CELO, uses feeCurrency only for gas payment
       const txHash: string = await eth.request({
         method: "eth_sendTransaction",
         params: [{
@@ -141,7 +140,6 @@ export default function Home() {
           value: PAYMENT_HEX,           // 0.001 CELO value
           data: PAY_SELECTOR,           // payForQuestion()
           gas: "0x30000",              // 196608 gas limit
-          feeCurrency: CUSD_ADDRESS,   // pay gas in cUSD (MiniPay feature)
         }]
       })
       return txHash
@@ -167,10 +165,25 @@ export default function Home() {
     const q = input.trim()
     if (!q || loading) return
 
-    if (!isConnected || !address) {
+    const eth = typeof window !== "undefined" ? (window as any).ethereum : null
+    const isMiniPay = !!eth?.isMiniPay
+
+    if (!isConnected && !isMiniPay) {
       open()
       return
     }
+
+    let currentUserAddress = address
+    if (isMiniPay && !currentUserAddress) {
+      try {
+        const accounts: string[] = await eth.request({ method: "eth_requestAccounts" })
+        currentUserAddress = accounts[0]
+      } catch (err) {
+        return
+      }
+    }
+
+    if (!currentUserAddress) return
 
     setShowHero(false)
     setInput("")
@@ -183,7 +196,7 @@ export default function Home() {
       const r1 = await fetch(`${AGENT_URL}/agent/session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q, studentAddress: address }),
+        body: JSON.stringify({ question: q, studentAddress: currentUserAddress }),
       }).catch(() => null)
 
       if (!r1) {
@@ -201,15 +214,12 @@ export default function Home() {
       }
 
       // Step 2: pay 0.001 CELO to TeachAgentPayment contract
-      const eth = (window as any).ethereum
-      const isMiniPay = !!eth?.isMiniPay
-      let signerAddress = address
+      let signerAddress = currentUserAddress
 
       setStatus("Confirm 0.001 CELO payment in your wallet...")
 
       if (isMiniPay) {
-        const accounts: string[] = await eth.request({ method: "eth_requestAccounts" })
-        signerAddress = accounts[0]
+        // Accounts already requested above
       } else if (walletProvider) {
         try {
           const wp = new ethers.providers.Web3Provider(walletProvider as any)
