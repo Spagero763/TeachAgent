@@ -21,9 +21,9 @@ const CUSD_ADDRESS = "0x765DE816845861e75A25fCA122bb6898B8B1282a"
 // payForQuestion() function selector (keccak256 first 4 bytes)
 const PAY_SELECTOR = "0x2567b851"
 
-// 0.001 CELO in hex
+// 0.001 CELO in hex (strictly formatted to even sequence for JSON-RPC)
 const PAYMENT_VALUE = ethers.utils.parseEther("0.001")
-const PAYMENT_HEX = "0x" + PAYMENT_VALUE.toBigInt().toString(16)
+const PAYMENT_HEX = ethers.utils.hexlify(PAYMENT_VALUE)
 
 const EXAMPLES = [
   "What is the Celo blockchain?",
@@ -123,7 +123,6 @@ export default function Home() {
     setMessages(prev => [...prev, msg])
   }
 
-  // Call payForQuestion() on the TeachAgentPayment contract with 0.001 CELO
   async function callPayForQuestion(
     signerAddress: string,
     isMiniPay: boolean,
@@ -131,18 +130,16 @@ export default function Home() {
     wcProvider?: any
   ): Promise<string> {
     if (isMiniPay) {
-      // MiniPay: raw eth_sendTransaction
-      const txHash: string = await eth.request({
-        method: "eth_sendTransaction",
-        params: [{
-          from: signerAddress,
-          to: TEACH_AGENT_CONTRACT,
-          value: PAYMENT_HEX,           // 0.001 CELO value
-          data: PAY_SELECTOR,           // payForQuestion()
-          gas: "0x30000",              // 196608 gas limit
-        }]
+      // Use standard ethers.js formatting to prevent JSON-RPC parsing issues in MiniPay
+      const wp = new ethers.providers.Web3Provider(eth)
+      const signer = wp.getSigner()
+      const tx = await signer.sendTransaction({
+        to: TEACH_AGENT_CONTRACT,
+        value: PAYMENT_VALUE,
+        data: PAY_SELECTOR,
       })
-      return txHash
+      const receipt = await tx.wait()
+      return receipt.transactionHash
     } else {
       // MetaMask / WalletConnect
       const web3Provider = new ethers.providers.Web3Provider(wcProvider)
