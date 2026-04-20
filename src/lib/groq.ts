@@ -4,21 +4,15 @@ dotenv.config()
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || ""
 
-export async function askCelo(question: string): Promise<string> {
+export async function askCelo(question: string, history: { role: string, content: string }[] = []): Promise<string> {
   if (!GROQ_API_KEY) {
     return "TeachAgent AI is offline. Please try again later."
   }
   try {
-    const res = await axios.post(
-      "https://api.groq.com/openai/v1/chat/completions",
+    const messages = [
       {
-        model: "llama-3.3-70b-versatile",
-        max_tokens: 1000,
-        temperature: 0.7,
-        messages: [
-          {
-            role: "system",
-            content: `You are TeachAgent, an expert AI assistant for the Celo blockchain ecosystem. You know everything about:
+        role: "system",
+        content: `You are TeachAgent, an expert AI assistant for the Celo blockchain ecosystem. You know everything about:
 - Celo blockchain architecture and history
 - cUSD, cEUR, cKES and Mento stablecoins
 - CELO token and staking
@@ -36,9 +30,18 @@ export async function askCelo(question: string): Promise<string> {
 - Celo's carbon-negative mission
 
 Give clear, practical, accurate answers. Be friendly and educational. When relevant, reference real Celo resources like docs.celo.org.`,
-          },
-          { role: "user", content: question },
-        ],
+      },
+      ...history,
+      { role: "user", content: question },
+    ]
+
+    const res = await axios.post(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        model: "llama-3.3-70b-versatile",
+        max_tokens: 1000,
+        temperature: 0.7,
+        messages: messages,
       },
       {
         headers: {

@@ -21,6 +21,13 @@ agentRouter.get("/identity", (_req: Request, res: Response) => {
   })
 })
 
+// Basic in-memory session store for conversational memory (resets on server restart)
+const sessionMemory: Record<string, { role: string; content: string }[]> = {}
+
+// Track used transaction hashes to prevent Replay Attacks
+// A hash is only marked as used IF the AI successfully delivers an answer
+const usedTxHashes = new Set<string>()
+
 // POST /agent/session
 agentRouter.post("/session", async (req: Request, res: Response) => {
   const { question, txHash, studentAddress } = req.body
@@ -35,6 +42,14 @@ agentRouter.post("/session", async (req: Request, res: Response) => {
       error: "Payment required",
       message: "Call payForQuestion() on the TeachAgent contract with 0.001 CELO",
       ...getPaymentRequirements(),
+    })
+  }
+
+  // Check if txHash has already been redeemed successfully
+  if (usedTxHashes.has(txHash.toLowerCase())) {
+    return res.status(400).json({
+      error: "Transaction already used",
+      message: "This payment txHash has already been consumed for a previous question.",
     })
   }
 
@@ -53,7 +68,21 @@ agentRouter.post("/session", async (req: Request, res: Response) => {
       })
     }
 
-    const answer = await askCelo(question.trim())
+    // Load history for the address
+    const history = sessionMemory[studentAddress.toLowerCase()] || []
+
+    const answer = await askCelo(question.trim(), history)
+    
+    // Update history (keep last 6 messages to avoid token bloat)
+    sessionMemory[studentAddress.toLowerCase()] = [
+      ...history,
+      { role: "user", content: question.trim() },
+      { role: "assistant", content: answer }
+    ].slice(-6)
+
+    // Mark txHash as used ONLY after successful Groq generation
+    usedTxHashes.add(txHash.toLowerCase())
+
     res.json({
       question: question.trim(),
       answer,
