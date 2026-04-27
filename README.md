@@ -51,5 +51,5 @@ curl -X POST https://teachagent.onrender.com/agent/session \
 
 | Contract | Address |
 |---|---|
-| TeachAgentPayment | `YOUR_DEPLOYED_ADDRESS` |
+| TeachAgentPayment | `0x6a818b6E70fe033d3b70b5D0bEfFd7e32FB221cA` |
 | AgentRegistry | `0xBe9Ddf20E2a0191232a5bf57003ea7A512851391` |

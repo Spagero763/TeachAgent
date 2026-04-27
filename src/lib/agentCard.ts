@@ -1,26 +1,27 @@
 export const agentCard = {
   type: "agent",
   name: "TeachAgent",
-  description: "AI agent that scores educators and provides tutoring sessions on Celo",
-  image: "https://teachagent.vercel.app/logo.png",
-  version: "1.0.0",
+  description: "AI agent that answers questions about the Celo blockchain ecosystem",
+  version: "2.0.0",
   endpoints: [
     {
       type: "rest",
-      url: "https://teachagent-production.up.railway.app",
+      url: "https://teachagent.onrender.com",
       description: "TeachAgent REST API"
     }
   ],
   capabilities: [
     "educator-scoring",
-    "tutoring-sessions", 
-    "reputation-tracking",
-    "x402-payments"
+    "tutoring-sessions",
+    "reputation-tracking"
   ],
   payment: {
-    token: "cUSD",
-    pricePerSession: "0.1",
-    network: "celo"
+    token: "CELO",
+    pricePerQuestion: "0.001",
+    network: "celo",
+    chainId: 42220,
+    contract: "0x6a818b6E70fe033d3b70b5D0bEfFd7e32FB221cA",
+    method: "payForQuestion()"
   },
   identity: {
     standard: "ERC-8004",

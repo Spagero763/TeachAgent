@@ -16,7 +16,6 @@ const AGENT_URL = "https://teachagent.onrender.com"
 
 // The deployed TeachAgentPayment contract on Celo mainnet
 const TEACH_AGENT_CONTRACT = "0x6a818b6E70fe033d3b70b5D0bEfFd7e32FB221cA"
-const CUSD_ADDRESS = "0x765DE816845861e75A25fCA122bb6898B8B1282a"
 
 // payForQuestion() function selector (keccak256 first 4 bytes)
 const PAY_SELECTOR = "0x2567b851"
@@ -112,8 +111,14 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState("")
   const [showHero, setShowHero] = useState(true)
+  const [isMiniPay, setIsMiniPay] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    const eth = (window as any).ethereum
+    setIsMiniPay(!!eth?.isMiniPay)
+  }, [])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -163,7 +168,6 @@ export default function Home() {
     if (!q || loading) return
 
     const eth = typeof window !== "undefined" ? (window as any).ethereum : null
-    const isMiniPay = !!eth?.isMiniPay
 
     if (!isConnected && !isMiniPay) {
       open()
@@ -384,7 +388,7 @@ export default function Home() {
       {/* Input bar */}
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50, background: "rgba(8,8,8,0.96)", backdropFilter: "blur(20px)", borderTop: "1px solid rgba(255,255,255,0.05)", padding: "16px 20px" }}>
         <div style={{ maxWidth: 800, margin: "0 auto" }}>
-          {!isConnected && (
+          {!isConnected && !isMiniPay && (
             <div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 12 }}>
               <span style={{ fontSize: 11, fontWeight: 300, color: "rgba(232,228,220,0.35)" }}>Connect wallet to chat — 0.001 CELO per question</span>
               <button onClick={() => open()} style={{ fontSize: 10, color: "#818cf8", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.15em" }}>
@@ -398,16 +402,16 @@ export default function Home() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-              placeholder={isConnected ? "Ask anything about Celo..." : "Connect wallet to ask..."}
+              placeholder={isConnected || isMiniPay ? "Ask anything about Celo..." : "Connect wallet to ask..."}
               rows={1}
-              disabled={!isConnected || loading}
+              disabled={(!isConnected && !isMiniPay) || loading}
               style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "12px 16px", color: "#e8e4dc", fontSize: 14, fontWeight: 300, fontFamily: "inherit", outline: "none", resize: "none", lineHeight: 1.5, minHeight: 46, maxHeight: 120, transition: "border-color 0.2s" }}
               onFocus={e => (e.currentTarget.style.borderColor = "rgba(129,140,248,0.4)")}
               onBlur={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)")}
             />
             <button
               onClick={handleSend}
-              disabled={loading || !input.trim() || !isConnected}
+              disabled={loading || !input.trim() || (!isConnected && !isMiniPay)}
               style={{ flexShrink: 0, fontSize: 10, fontWeight: 300, letterSpacing: "0.18em", textTransform: "uppercase", color: "#e8e4dc", background: loading || !input.trim() || !isConnected ? "rgba(79,70,229,0.25)" : "rgba(79,70,229,0.7)", border: "none", padding: "12px 20px", cursor: loading || !input.trim() || !isConnected ? "default" : "pointer", fontFamily: "inherit", whiteSpace: "nowrap", minHeight: 46 }}
             >
               {loading ? "..." : "Send"}
