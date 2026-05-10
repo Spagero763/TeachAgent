@@ -15,8 +15,8 @@ createAppKit({
   metadata: {
     name: "TeachAgent",
     description: "AI agent for educator reputation on Celo",
-    url: "https://teachagent.vercel.app",
-    icons: ["https://teachagent.vercel.app/favicon.ico"],
+    url: "https://teach-agent.vercel.app",
+    icons: ["https://teach-agent.vercel.app/favicon.ico"],
   },
   features: { analytics: false, email: false, socials: false },
   themeMode: "dark",

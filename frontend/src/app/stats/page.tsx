@@ -51,13 +51,17 @@ export default function StatsPage() {
 
   useEffect(() => {
     fetch(`${AGENT_URL}/agent/stats`)
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error(`Server error (${r.status}) — backend may be starting up`)
+        return r.json()
+      })
       .then(d => {
+        if (d.error) throw new Error(d.error)
         setStats(d)
         setLoading(false)
       })
-      .catch(() => {
-        setError("Backend is starting up. Refresh in 30 seconds.")
+      .catch(err => {
+        setError(err.message || "Backend is starting up. Refresh in 30 seconds.")
         setLoading(false)
       })
   }, [])

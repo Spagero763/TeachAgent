@@ -108,9 +108,11 @@ agentRouter.get("/stats", async (_req: Request, res: Response) => {
     const totalQuestions = totalQuestionsRaw.toNumber()
     const totalCELO = totalQuestions * 0.001
 
-    // Fetch all QuestionPaid events to derive unique users + leaderboard
+    // Query events from contract deployment block to avoid RPC range limits
+    // Contract deployed ~May 2025, Celo block ~28,500,000 at that time
+    const FROM_BLOCK = 28_000_000
     const filter = contract.filters.QuestionPaid()
-    const events = await contract.queryFilter(filter)
+    const events = await contract.queryFilter(filter, FROM_BLOCK, "latest")
 
     const userCounts: Record<string, number> = {}
     for (const ev of events) {
