@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { useAppKit, useAppKitAccount } from "@reown/appkit/react"
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const { open } = useAppKit()
   const { address, isConnected } = useAppKitAccount()
+  const pathname = usePathname()
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 40)
@@ -30,17 +33,29 @@ export function Navbar() {
         transition: "all 0.4s",
       }}
     >
-      <div style={{ fontSize: 13, fontWeight: 300, letterSpacing: "0.25em", textTransform: "uppercase", color: "#e8e4dc" }}>
+      <Link href="/" style={{ fontSize: 13, fontWeight: 300, letterSpacing: "0.25em", textTransform: "uppercase", color: "#e8e4dc", textDecoration: "none" }}>
         TeachAgent
-      </div>
+      </Link>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+        <Link
+          href="/stats"
+          style={{
+            fontSize: 10, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase",
+            color: pathname === "/stats" ? "#818cf8" : "rgba(232,228,220,0.4)",
+            textDecoration: "none", transition: "color 0.2s",
+          }}
+        >
+          Stats
+        </Link>
+
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#818cf8" }} />
           <span style={{ fontSize: 10, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(232,228,220,0.35)" }}>
             Celo
           </span>
         </div>
+
         <button
           onClick={() => open()}
           style={{

@@ -3,6 +3,8 @@ import { ethers } from "ethers"
 import { askCelo } from "../lib/groq"
 import { provider, agentWallet } from "../lib/celo"
 import { getPaymentRequirements, verifyPayment } from "../lib/x402"
+import { getHistory, saveHistory, isTxUsed, markTxUsed } from "../lib/memory"
+import { TEACH_AGENT_CONTRACT } from "../lib/x402"
 import dotenv from "dotenv"
 dotenv.config()
 
@@ -21,13 +23,6 @@ agentRouter.get("/identity", (_req: Request, res: Response) => {
   })
 })
 
-// Basic in-memory session store for conversational memory (resets on server restart)
-const sessionMemory: Record<string, { role: string; content: string }[]> = {}
-
-// Track used transaction hashes to prevent Replay Attacks
-// A hash is only marked as used IF the AI successfully delivers an answer
-const usedTxHashes = new Set<string>()
-
 // POST /agent/session
 agentRouter.post("/session", async (req: Request, res: Response) => {
   const { question, txHash, studentAddress } = req.body
@@ -45,16 +40,16 @@ agentRouter.post("/session", async (req: Request, res: Response) => {
     })
   }
 
+  if (!studentAddress || !ethers.utils.isAddress(studentAddress)) {
+    return res.status(400).json({ error: "Valid studentAddress required" })
+  }
+
   // Check if txHash has already been redeemed successfully
-  if (usedTxHashes.has(txHash.toLowerCase())) {
+  if (await isTxUsed(txHash)) {
     return res.status(400).json({
       error: "Transaction already used",
       message: "This payment txHash has already been consumed for a previous question.",
     })
-  }
-
-  if (!studentAddress || !ethers.utils.isAddress(studentAddress)) {
-    return res.status(400).json({ error: "Valid studentAddress required" })
   }
 
   try {
@@ -68,20 +63,17 @@ agentRouter.post("/session", async (req: Request, res: Response) => {
       })
     }
 
-    // Load history for the address
-    const history = sessionMemory[studentAddress.toLowerCase()] || []
-
+    const history = await getHistory(studentAddress)
     const answer = await askCelo(question.trim(), history)
-    
-    // Update history (keep last 6 messages to avoid token bloat)
-    sessionMemory[studentAddress.toLowerCase()] = [
+
+    await saveHistory(studentAddress, [
       ...history,
       { role: "user", content: question.trim() },
-      { role: "assistant", content: answer }
-    ].slice(-6)
+      { role: "assistant", content: answer },
+    ])
 
     // Mark txHash as used ONLY after successful Groq generation
-    usedTxHashes.add(txHash.toLowerCase())
+    await markTxUsed(txHash)
 
     res.json({
       question: question.trim(),
@@ -94,6 +86,56 @@ agentRouter.post("/session", async (req: Request, res: Response) => {
         verified: true,
         contract: getPaymentRequirements().contract,
       },
+    })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /agent/stats — live on-chain metrics for the stats dashboard
+agentRouter.get("/stats", async (_req: Request, res: Response) => {
+  try {
+    const contract = new ethers.Contract(
+      TEACH_AGENT_CONTRACT,
+      [
+        "function totalQuestions() view returns (uint256)",
+        "event QuestionPaid(address indexed student, uint256 indexed questionId, uint256 amount)",
+      ],
+      provider
+    )
+
+    const totalQuestionsRaw: ethers.BigNumber = await contract.totalQuestions()
+    const totalQuestions = totalQuestionsRaw.toNumber()
+    const totalCELO = totalQuestions * 0.001
+
+    // Fetch all QuestionPaid events to derive unique users + leaderboard
+    const filter = contract.filters.QuestionPaid()
+    const events = await contract.queryFilter(filter)
+
+    const userCounts: Record<string, number> = {}
+    for (const ev of events) {
+      const args = (ev as ethers.Event & { args: { student: string } }).args
+      if (args?.student) {
+        const addr = args.student.toLowerCase()
+        userCounts[addr] = (userCounts[addr] || 0) + 1
+      }
+    }
+
+    const uniqueUsers = Object.keys(userCounts).length
+
+    const leaderboard = Object.entries(userCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10)
+      .map(([address, questions], i) => ({ rank: i + 1, address, questions }))
+
+    res.json({
+      totalQuestions,
+      totalCELO: parseFloat(totalCELO.toFixed(4)),
+      uniqueUsers,
+      leaderboard,
+      contract: TEACH_AGENT_CONTRACT,
+      network: "Celo Mainnet",
+      updatedAt: new Date().toISOString(),
     })
   } catch (err: any) {
     res.status(500).json({ error: err.message })

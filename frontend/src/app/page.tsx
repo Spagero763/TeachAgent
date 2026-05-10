@@ -6,6 +6,7 @@ import { Navbar } from "@/components/Navbar"
 import { useAppKit, useAppKitAccount, useAppKitProvider } from "@reown/appkit/react"
 import { ethers } from "ethers"
 import dynamic from "next/dynamic"
+import Link from "next/link"
 
 const AgentCanvas = dynamic(
   () => import("@/components/AgentCanvas").then(m => ({ default: m.AgentCanvas })),
@@ -31,6 +32,12 @@ const EXAMPLES = [
   "What is MiniPay?",
   "How does EduPay work?",
   "What wallets support Celo?",
+]
+
+const HOW_IT_WORKS = [
+  { step: "01", title: "Get MiniPay or any Celo wallet", desc: "Download Opera Mini to use MiniPay, or connect MetaMask / Valora. Already have one? You're ready." },
+  { step: "02", title: "Get 0.001 CELO", desc: "A fraction of a cent. Buy CELO on Binance, Coinbase, or get it from a friend. Send it to your wallet on the Celo network." },
+  { step: "03", title: "Ask anything about Celo", desc: "Smart contracts, wallets, DeFi, cUSD, MiniPay — our AI answers instantly. Pay only when you learn." },
 ]
 
 type Message = {
@@ -331,16 +338,44 @@ export default function Home() {
                 ))}
               </div>
 
-              <button
-                onClick={() => { setShowHero(false); setTimeout(() => inputRef.current?.focus(), 100) }}
-                style={{ fontSize: 11, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase", color: "#e8e4dc", background: "rgba(79,70,229,0.7)", border: "none", padding: "14px 32px", cursor: "pointer", fontFamily: "inherit" }}
-              >
-                Start asking →
-              </button>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <button
+                  onClick={() => { setShowHero(false); setTimeout(() => inputRef.current?.focus(), 100) }}
+                  style={{ fontSize: 11, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase", color: "#e8e4dc", background: "rgba(79,70,229,0.7)", border: "none", padding: "14px 32px", cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  Start asking →
+                </button>
+                <Link
+                  href="/stats"
+                  style={{ fontSize: 11, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(232,228,220,0.5)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "14px 32px", textDecoration: "none", display: "inline-flex", alignItems: "center" }}
+                >
+                  View stats →
+                </Link>
+              </div>
             </motion.div>
           </motion.section>
         )}
       </AnimatePresence>
+
+      {/* How it works — shown only on hero screen */}
+      {showHero && (
+        <div style={{ maxWidth: 800, width: "100%", margin: "0 auto", padding: "0 32px 80px" }}>
+          <div style={{ fontSize: 10, fontWeight: 300, letterSpacing: "0.28em", textTransform: "uppercase", color: "rgba(232,228,220,0.2)", marginBottom: 24 }}>
+            How it works
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            {HOW_IT_WORKS.map(({ step, title, desc }) => (
+              <div key={step} style={{ display: "flex", gap: 24, padding: "20px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                <span style={{ fontSize: 10, fontWeight: 300, color: "#818cf8", letterSpacing: "0.1em", flexShrink: 0, paddingTop: 2 }}>{step}</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 400, color: "rgba(232,228,220,0.7)", marginBottom: 6 }}>{title}</div>
+                  <div style={{ fontSize: 12, fontWeight: 300, color: "rgba(232,228,220,0.35)", lineHeight: 1.7 }}>{desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Chat */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", maxWidth: 800, width: "100%", margin: "0 auto", padding: "0 20px", paddingTop: showHero ? 0 : 100, paddingBottom: 180 }}>
