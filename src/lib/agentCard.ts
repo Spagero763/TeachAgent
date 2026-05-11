@@ -11,9 +11,13 @@ export const agentCard = {
     }
   ],
   capabilities: [
-    "educator-scoring",
+    "celo-qa",
     "tutoring-sessions",
-    "reputation-tracking"
+    "conversational-memory",
+    "onchain-payments",
+    "minipay-compatible",
+    "learner-leaderboard",
+    "realtime-stats-dashboard"
   ],
   payment: {
     token: "CELO",
