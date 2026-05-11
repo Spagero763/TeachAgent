@@ -94,23 +94,32 @@ agentRouter.post("/session", async (req: Request, res: Response) => {
 
 // GET /agent/stats — live on-chain metrics for the stats dashboard
 agentRouter.get("/stats", async (_req: Request, res: Response) => {
+  // Step 1: read totalQuestions from contract
+  let totalQuestions = 0
   try {
     const contract = new ethers.Contract(
       TEACH_AGENT_CONTRACT,
-      [
-        "function totalQuestions() view returns (uint256)",
-        "event QuestionPaid(address indexed student, uint256 indexed questionId, uint256 amount)",
-      ],
+      ["function totalQuestions() view returns (uint256)"],
       provider
     )
+    const raw: ethers.BigNumber = await contract.totalQuestions()
+    totalQuestions = raw.toNumber()
+  } catch (err: any) {
+    console.error("[stats] totalQuestions failed:", err.message)
+    return res.status(500).json({ error: `Contract read failed: ${err.message}` })
+  }
 
-    const totalQuestionsRaw: ethers.BigNumber = await contract.totalQuestions()
-    const totalQuestions = totalQuestionsRaw.toNumber()
-    const totalCELO = totalQuestions * 0.001
-
-    // Query events from contract deployment block to avoid RPC range limits
-    // Contract deployed ~May 2025, Celo block ~28,500,000 at that time
-    const FROM_BLOCK = 28_000_000
+  // Step 2: query events for unique users + leaderboard (non-fatal if RPC fails)
+  let uniqueUsers = 0
+  let leaderboard: { rank: number; address: string; questions: number }[] = []
+  try {
+    const contract = new ethers.Contract(
+      TEACH_AGENT_CONTRACT,
+      ["event QuestionPaid(address indexed student, uint256 indexed questionId, uint256 amount)"],
+      provider
+    )
+    const currentBlock = await provider.getBlockNumber()
+    const FROM_BLOCK = Math.max(currentBlock - 500_000, 0)
     const filter = contract.filters.QuestionPaid()
     const events = await contract.queryFilter(filter, FROM_BLOCK, "latest")
 
@@ -122,26 +131,24 @@ agentRouter.get("/stats", async (_req: Request, res: Response) => {
         userCounts[addr] = (userCounts[addr] || 0) + 1
       }
     }
-
-    const uniqueUsers = Object.keys(userCounts).length
-
-    const leaderboard = Object.entries(userCounts)
+    uniqueUsers = Object.keys(userCounts).length
+    leaderboard = Object.entries(userCounts)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 10)
       .map(([address, questions], i) => ({ rank: i + 1, address, questions }))
-
-    res.json({
-      totalQuestions,
-      totalCELO: parseFloat(totalCELO.toFixed(4)),
-      uniqueUsers,
-      leaderboard,
-      contract: TEACH_AGENT_CONTRACT,
-      network: "Celo Mainnet",
-      updatedAt: new Date().toISOString(),
-    })
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    console.error("[stats] event query failed (non-fatal):", err.message)
   }
+
+  res.json({
+    totalQuestions,
+    totalCELO: parseFloat((totalQuestions * 0.001).toFixed(4)),
+    uniqueUsers,
+    leaderboard,
+    contract: TEACH_AGENT_CONTRACT,
+    network: "Celo Mainnet",
+    updatedAt: new Date().toISOString(),
+  })
 })
 
 // GET /agent/health (alias)
