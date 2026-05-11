@@ -42,6 +42,8 @@ type Message = {
   role: "user" | "agent" | "system"
   text: string
   txHash?: string
+  free?: boolean
+  fromHistory?: boolean
 }
 
 /* ─── inline markdown renderer ─── */
@@ -189,6 +191,7 @@ export default function Home() {
   const [status, setStatus] = useState("")
   const [isMiniPay, setIsMiniPay] = useState(false)
   const [miniPayAddress, setMiniPayAddress] = useState<string | null>(null)
+  const [freeUsed, setFreeUsed] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -202,6 +205,27 @@ export default function Home() {
         .catch(() => {})
     }
   }, [])
+
+  // Load conversation history + free question status when wallet connects
+  useEffect(() => {
+    const addr = miniPayAddress || address
+    if (!addr) return
+    fetch(`${AGENT_URL}/agent/history/${addr}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return
+        setFreeUsed(!!data.freeUsed)
+        if (data.history?.length) {
+          const msgs: Message[] = []
+          for (const h of data.history) {
+            if (h.role === "user") msgs.push({ role: "user", text: h.content, fromHistory: true })
+            else if (h.role === "assistant") msgs.push({ role: "agent", text: h.content, fromHistory: true })
+          }
+          setMessages(msgs)
+        }
+      })
+      .catch(() => {})
+  }, [address, miniPayAddress])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -272,7 +296,8 @@ export default function Home() {
 
       if (r1.status !== 402) {
         const d = await r1.json()
-        addMessage({ role: "agent", text: d.answer || d.error || "No response" })
+        if (d.freeQuestion) setFreeUsed(true)
+        addMessage({ role: "agent", text: d.answer || d.error || "No response", free: !!d.freeQuestion })
         setLoading(false); return
       }
 
@@ -326,6 +351,25 @@ export default function Home() {
 
       <BackgroundActivity />
       <Navbar />
+
+      {/* ── Free question banner ── */}
+      <AnimatePresence>
+        {connected && !freeUsed && messages.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: "fixed", top: 56, left: 0, right: 0, zIndex: 90,
+              background: "#EBF9F2", borderBottom: "1px solid #B6EDCF",
+              padding: "8px 20px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            }}
+          >
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#1B8A4F" }}>Your first question is free</span>
+            <span style={{ fontSize: 12, color: "rgba(27,138,79,0.6)" }}>— no payment needed</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Welcome screen ── */}
       <AnimatePresence>
@@ -453,6 +497,14 @@ export default function Home() {
           flex: 1, maxWidth: 720, width: "100%", margin: "0 auto",
           padding: "72px 16px 170px",
         }}>
+          {/* Previous session divider */}
+          {messages.some(m => m.fromHistory) && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+              <div style={{ flex: 1, height: 1, background: "#E2EAE5" }} />
+              <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(15,31,22,0.35)", whiteSpace: "nowrap" }}>Previous session</span>
+              <div style={{ flex: 1, height: 1, background: "#E2EAE5" }} />
+            </div>
+          )}
           {messages.map((msg, i) => (
             <motion.div key={i}
               initial={{ opacity: 0, y: 14, scale: 0.97 }}
@@ -471,6 +523,11 @@ export default function Home() {
                   <span style={{ fontSize: 12, fontWeight: 600, color: msg.role === "agent" ? "#35D07F" : "#B87A00" }}>
                     {msg.role === "agent" ? "TeachAgent" : "Notice"}
                   </span>
+                  {msg.free && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#1B8A4F", background: "#EBF9F2", border: "1px solid #B6EDCF", borderRadius: 6, padding: "1px 6px" }}>
+                      FREE
+                    </span>
+                  )}
                 </div>
               )}
 
