@@ -147,9 +147,24 @@ export default function Home() {
 
   async function callPay(signerAddr: string, eth: any, wcProvider?: any): Promise<string> {
     if (isMiniPay) {
+      // Use raw eth_sendTransaction — MiniPay drops `value` when routed through
+      // the ethers.js Web3Provider wrapper, causing the contract to revert.
+      const valueHex = ethers.utils.hexlify(PAYMENT_VALUE)
+      const gasHex = ethers.utils.hexlify(200000)
+      const txHash: string = await eth.request({
+        method: "eth_sendTransaction",
+        params: [{
+          from: signerAddr,
+          to: TEACH_AGENT_CONTRACT,
+          value: valueHex,
+          data: PAY_SELECTOR,
+          gas: gasHex,
+        }],
+      })
+      // Wait for the transaction to be mined
       const wp = new ethers.providers.Web3Provider(eth)
-      const tx = await wp.getSigner().sendTransaction({ to: TEACH_AGENT_CONTRACT, value: PAYMENT_VALUE, data: PAY_SELECTOR })
-      return (await tx.wait()).transactionHash
+      await wp.waitForTransaction(txHash, 1, 90000)
+      return txHash
     }
     const wp = new ethers.providers.Web3Provider(wcProvider)
     const contract = new ethers.Contract(TEACH_AGENT_CONTRACT, ["function payForQuestion() external payable returns (uint256)"], wp.getSigner())
@@ -205,9 +220,12 @@ export default function Home() {
       const txHash = await callPay(signerAddr, eth, walletProvider)
       setStatus("Confirming on Celo…")
 
-      const prov = isMiniPay ? new ethers.providers.Web3Provider(eth) : new ethers.providers.Web3Provider(walletProvider as any)
-      const receipt = await prov.waitForTransaction(txHash, 1, 90000)
-      if (!receipt || receipt.status !== 1) throw new Error("Transaction failed. Please try again.")
+      if (!isMiniPay) {
+        // MiniPay already waited inside callPay; only non-MiniPay needs another wait
+        const prov = new ethers.providers.Web3Provider(walletProvider as any)
+        const receipt = await prov.waitForTransaction(txHash, 1, 90000)
+        if (!receipt || receipt.status !== 1) throw new Error("Transaction failed. Please try again.")
+      }
 
       setStatus("Getting your answer…")
       const r2 = await fetch(`${AGENT_URL}/agent/session`, {
