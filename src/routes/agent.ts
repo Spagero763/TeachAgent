@@ -3,7 +3,7 @@ import { ethers } from "ethers"
 import { askCelo } from "../lib/groq"
 import { provider, agentWallet } from "../lib/celo"
 import { getPaymentRequirements, verifyPayment } from "../lib/x402"
-import { getHistory, saveHistory, isTxUsed, markTxUsed } from "../lib/memory"
+import { getHistory, saveHistory, isTxUsed, markTxUsed, isFreeUsed, markFreeUsed } from "../lib/memory"
 import { TEACH_AGENT_CONTRACT } from "../lib/x402"
 import dotenv from "dotenv"
 dotenv.config()
@@ -31,8 +31,29 @@ agentRouter.post("/session", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "question is required" })
   }
 
-  // No payment yet — return 402
+  // No payment yet — check if wallet qualifies for free first question
   if (!txHash) {
+    if (!studentAddress || !ethers.utils.isAddress(studentAddress)) {
+      return res.status(400).json({ error: "Valid studentAddress required" })
+    }
+    const freeUsed = await isFreeUsed(studentAddress)
+    if (!freeUsed) {
+      // Answer the first question for free
+      const history = await getHistory(studentAddress)
+      const answer = await askCelo(question.trim(), history)
+      await saveHistory(studentAddress, [
+        ...history,
+        { role: "user", content: question.trim() },
+        { role: "assistant", content: answer },
+      ])
+      await markFreeUsed(studentAddress)
+      return res.json({
+        question: question.trim(),
+        answer,
+        sessionAt: new Date().toISOString(),
+        freeQuestion: true,
+      })
+    }
     return res.status(402).json({
       error: "Payment required",
       message: "Call payForQuestion() on the TeachAgent contract with 0.001 CELO",
@@ -44,7 +65,7 @@ agentRouter.post("/session", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Valid studentAddress required" })
   }
 
-  // Check if txHash has already been redeemed successfully
+  // Check if txHash has already been redeemed
   if (await isTxUsed(txHash)) {
     return res.status(400).json({
       error: "Transaction already used",
@@ -173,6 +194,21 @@ agentRouter.get("/stats", async (_req: Request, res: Response) => {
     network: "Celo Mainnet",
     updatedAt: new Date().toISOString(),
   })
+})
+
+// GET /agent/history/:address — return stored conversation history for a wallet
+agentRouter.get("/history/:address", async (req: Request, res: Response) => {
+  const { address } = req.params
+  if (!address || !ethers.utils.isAddress(address)) {
+    return res.status(400).json({ error: "Valid address required" })
+  }
+  try {
+    const history = await getHistory(address)
+    const freeUsed = await isFreeUsed(address)
+    res.json({ history, freeUsed })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 // GET /agent/health (alias)
