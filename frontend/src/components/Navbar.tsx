@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { motion } from "framer-motion"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useAppKit, useAppKitAccount } from "@reown/appkit/react"
@@ -13,62 +12,63 @@ export function Navbar() {
   const pathname = usePathname()
 
   useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 40)
+    const fn = () => setScrolled(window.scrollY > 10)
     window.addEventListener("scroll", fn)
     return () => window.removeEventListener("scroll", fn)
   }, [])
 
   return (
-    <motion.nav
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.8 }}
-      style={{
-        position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "20px 32px",
-        background: scrolled ? "rgba(8,8,8,0.95)" : "transparent",
-        backdropFilter: scrolled ? "blur(16px)" : "none",
-        borderBottom: scrolled ? "1px solid rgba(255,255,255,0.05)" : "none",
-        transition: "all 0.4s",
-      }}
-    >
-      <Link href="/" style={{ fontSize: 13, fontWeight: 300, letterSpacing: "0.25em", textTransform: "uppercase", color: "#e8e4dc", textDecoration: "none" }}>
-        TeachAgent
+    <nav style={{
+      position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      padding: "0 24px", height: 56,
+      background: scrolled ? "rgba(10,15,13,0.97)" : "rgba(10,15,13,0.8)",
+      backdropFilter: "blur(12px)",
+      borderBottom: "1px solid rgba(53,208,127,0.1)",
+      transition: "background 0.3s",
+    }}>
+      {/* Logo */}
+      <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: "50%",
+          background: "linear-gradient(135deg, #35D07F, #FBCC5C)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 13, fontWeight: 700, color: "#0A0F0D", flexShrink: 0,
+        }}>T</div>
+        <span style={{ fontSize: 15, fontWeight: 600, color: "#E8EDE9", letterSpacing: "-0.01em" }}>
+          TeachAgent
+        </span>
       </Link>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-        <Link
-          href="/stats"
-          style={{
-            fontSize: 10, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase",
-            color: pathname === "/stats" ? "#818cf8" : "rgba(232,228,220,0.4)",
-            textDecoration: "none", transition: "color 0.2s",
-          }}
-        >
-          Stats
-        </Link>
+      {/* Nav links + connect */}
+      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <Link href="/" style={{
+          fontSize: 13, fontWeight: 500, padding: "6px 12px", borderRadius: 6, textDecoration: "none",
+          color: pathname === "/" ? "#35D07F" : "rgba(232,237,233,0.5)",
+          background: pathname === "/" ? "rgba(53,208,127,0.08)" : "transparent",
+          transition: "all 0.2s",
+        }}>Chat</Link>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#818cf8" }} />
-          <span style={{ fontSize: 10, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(232,228,220,0.35)" }}>
-            Celo
-          </span>
-        </div>
+        <Link href="/stats" style={{
+          fontSize: 13, fontWeight: 500, padding: "6px 12px", borderRadius: 6, textDecoration: "none",
+          color: pathname === "/stats" ? "#35D07F" : "rgba(232,237,233,0.5)",
+          background: pathname === "/stats" ? "rgba(53,208,127,0.08)" : "transparent",
+          transition: "all 0.2s",
+        }}>Stats</Link>
 
         <button
           onClick={() => open()}
           style={{
-            fontSize: 10, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase",
-            color: isConnected ? "#818cf8" : "#e8e4dc",
-            background: isConnected ? "rgba(79,70,229,0.12)" : "rgba(79,70,229,0.7)",
-            border: isConnected ? "1px solid rgba(129,140,248,0.25)" : "none",
-            padding: "9px 20px", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+            marginLeft: 8, fontSize: 13, fontWeight: 500, padding: "7px 16px", borderRadius: 8,
+            cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+            color: isConnected ? "#35D07F" : "#0A0F0D",
+            background: isConnected ? "rgba(53,208,127,0.1)" : "#35D07F",
+            border: isConnected ? "1px solid rgba(53,208,127,0.3)" : "none",
           }}
         >
-          {isConnected && address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "Connect"}
+          {isConnected && address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "Connect Wallet"}
         </button>
       </div>
-    </motion.nav>
+    </nav>
   )
 }
