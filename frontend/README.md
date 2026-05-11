@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TeachAgent — Frontend
 
-## Getting Started
+Next.js frontend for TeachAgent, the AI tutor on Celo blockchain.
 
-First, run the development server:
+**Live:** https://teach-agent.vercel.app
+
+---
+
+## Stack
+
+- Next.js (App Router) with React
+- Reown AppKit — wallet connection (MetaMask, Valora, MiniPay)
+- ethers.js v5 — Celo transaction signing
+- Framer Motion — animations
+- Deployed on Vercel
+
+---
+
+## Local setup
 
 ```bash
+cd frontend
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment
 
-## Learn More
+No required environment variables for local dev — the wallet project ID is bundled and the backend URL is hardcoded to the production API.
 
-To learn more about Next.js, take a look at the following resources:
+To point at a local backend, edit `AGENT_URL` in `src/app/page.tsx`:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```ts
+const AGENT_URL = "http://localhost:3001"
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## Key files
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| File | Purpose |
+|------|---------|
+| `src/app/page.tsx` | Chat UI — question input, payment flow, message thread |
+| `src/app/stats/page.tsx` | Live stats dashboard — on-chain metrics + leaderboard |
+| `src/components/Navbar.tsx` | Top navigation bar |
+| `src/components/Logo.tsx` | SVG brand logo component |
+| `src/app/providers.tsx` | Reown AppKit + wagmi setup |
+| `src/lib/wagmi.ts` | Wagmi adapter config for Celo Mainnet |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## Payment flow
+
+### Non-MiniPay wallets (MetaMask, Valora)
+1. Frontend calls `POST /agent/session` — backend returns `402`
+2. ethers.js calls `payForQuestion()` on the TeachAgentPayment contract with `0.001 CELO`
+3. Frontend re-calls with `txHash` — backend verifies and returns answer
+
+### MiniPay
+MiniPay's CIP-64 transaction format silently drops the `value` field, causing native CELO transfers to arrive with `msg.value = 0`. Fix: MiniPay path sends **0.001 cUSD** to the contract using `cUSD.transfer()` instead. The backend accepts both payment types.
+
+---
+
+## Contracts
+
+| | Address |
+|---|---|
+| TeachAgentPayment | `0x6a818b6E70fe033d3b70b5D0bEfFd7e32FB221cA` |
+| cUSD (Celo Mainnet) | `0x765DE816845861e75A25fCA122bb6898B8B1282a` |
+
+Network: Celo Mainnet · Chain ID: 42220
