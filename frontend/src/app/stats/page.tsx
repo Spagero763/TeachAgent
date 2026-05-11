@@ -11,6 +11,7 @@ const AGENT_URL = "https://teachagent.onrender.com"
 type Stats = {
   totalQuestions: number
   totalCELO: number
+  totalCUSD: number
   uniqueUsers: number
   leaderboard: { rank: number; address: string; questions: number }[]
   contract: string
@@ -110,11 +111,11 @@ export default function StatsPage() {
 
         {stats && (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 24 }}>
-              <StatCard label="Questions Answered" value={stats.totalQuestions.toLocaleString()} sub="all time" delay={0} />
-              <StatCard label="CELO Earned" value={stats.totalCELO.toFixed(3)} sub="on-chain" delay={0.06} />
-              <StatCard label="Unique Learners" value={stats.uniqueUsers.toLocaleString()} sub="last 500k blocks" delay={0.12} />
-              <StatCard label="Price per Answer" value="0.001" sub="CELO / cUSD via MiniPay" delay={0.18} />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 24 }}>
+              <StatCard label="Total Questions" value={stats.totalQuestions.toLocaleString()} sub="CELO + MiniPay" delay={0} />
+              <StatCard label="CELO Earned" value={stats.totalCELO.toFixed(3)} sub="via payForQuestion()" delay={0.06} />
+              <StatCard label="cUSD Earned" value={(stats.totalCUSD ?? 0).toFixed(3)} sub="via MiniPay" delay={0.12} />
+              <StatCard label="Unique Learners" value={stats.uniqueUsers.toLocaleString()} sub="last 500k blocks" delay={0.18} />
             </div>
 
             <motion.div
@@ -204,7 +205,7 @@ export default function StatsPage() {
                       <div style={{ fontSize: 12, color: "rgba(15,31,22,0.4)", fontWeight: 500 }}>questions</div>
                     </div>
                     <div style={{ fontSize: 12, color: "#35D07F", fontWeight: 600, minWidth: 60, textAlign: "right" }}>
-                      {(row.questions * 0.001).toFixed(3)} CELO
+                      {(row.questions * 0.001).toFixed(3)}
                     </div>
                   </motion.div>
                 ))}
