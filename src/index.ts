@@ -33,4 +33,10 @@ app.listen(PORT, () => {
   console.log(`TeachAgent running on port ${PORT}`)
 })
 
+// Keep Render free tier awake — ping self every 14 minutes
+const SELF_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`
+setInterval(() => {
+  fetch(`${SELF_URL}/health`).catch(() => {})
+}, 14 * 60 * 1000)
+
 export default app
