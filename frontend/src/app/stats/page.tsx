@@ -16,30 +16,26 @@ type Stats = {
   updatedAt: string
 }
 
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function StatCard({ label, value, sub, delay = 0 }: { label: string; value: string; sub?: string; delay?: number }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.4 }}
       style={{
-        padding: "28px 32px",
-        border: "1px solid rgba(255,255,255,0.07)",
-        background: "rgba(255,255,255,0.02)",
-        flex: 1,
-        minWidth: 160,
+        flex: "1 1 160px", padding: "20px 24px",
+        background: "rgba(53,208,127,0.04)",
+        border: "1px solid rgba(53,208,127,0.12)",
+        borderRadius: 14,
       }}
     >
-      <div style={{ fontSize: 10, fontWeight: 300, letterSpacing: "0.25em", textTransform: "uppercase", color: "rgba(232,228,220,0.3)", marginBottom: 12 }}>
+      <div style={{ fontSize: 12, fontWeight: 500, color: "rgba(232,237,233,0.4)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
         {label}
       </div>
-      <div style={{ fontSize: "clamp(1.8rem, 4vw, 2.8rem)", fontWeight: 100, color: "#e8e4dc", letterSpacing: "-0.02em", lineHeight: 1 }}>
+      <div style={{ fontSize: "clamp(1.6rem, 3.5vw, 2.2rem)", fontWeight: 700, color: "#E8EDE9", letterSpacing: "-0.02em", lineHeight: 1, marginBottom: 4 }}>
         {value}
       </div>
-      {sub && (
-        <div style={{ fontSize: 11, fontWeight: 300, color: "rgba(129,140,248,0.6)", marginTop: 6 }}>
-          {sub}
-        </div>
-      )}
+      {sub && <div style={{ fontSize: 12, color: "rgba(53,208,127,0.6)", fontWeight: 500 }}>{sub}</div>}
     </motion.div>
   )
 }
@@ -67,52 +63,50 @@ export default function StatsPage() {
   }, [])
 
   return (
-    <div style={{ background: "#080808", minHeight: "100vh", color: "#e8e4dc" }}>
+    <div style={{ background: "#0A0F0D", minHeight: "100vh", color: "#E8EDE9" }}>
       {/* Navbar */}
       <nav style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "20px 32px",
-        background: "rgba(8,8,8,0.95)",
-        backdropFilter: "blur(16px)",
-        borderBottom: "1px solid rgba(255,255,255,0.05)",
+        padding: "0 24px", height: 56,
+        background: "rgba(10,15,13,0.97)", backdropFilter: "blur(12px)",
+        borderBottom: "1px solid rgba(53,208,127,0.1)",
       }}>
-        <Link href="/" style={{ fontSize: 13, fontWeight: 300, letterSpacing: "0.25em", textTransform: "uppercase", color: "#e8e4dc", textDecoration: "none" }}>
-          TeachAgent
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
+          <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #35D07F, #FBCC5C)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#0A0F0D" }}>T</div>
+          <span style={{ fontSize: 15, fontWeight: 600, color: "#E8EDE9" }}>TeachAgent</span>
         </Link>
-        <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
-          <Link href="/" style={{ fontSize: 10, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(232,228,220,0.4)", textDecoration: "none" }}>
-            Ask
-          </Link>
-          <span style={{ fontSize: 10, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase", color: "#818cf8" }}>
-            Stats
-          </span>
+        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+          <Link href="/" style={{ fontSize: 13, fontWeight: 500, padding: "6px 12px", borderRadius: 6, textDecoration: "none", color: "rgba(232,237,233,0.5)" }}>Chat</Link>
+          <Link href="/stats" style={{ fontSize: 13, fontWeight: 500, padding: "6px 12px", borderRadius: 6, textDecoration: "none", color: "#35D07F", background: "rgba(53,208,127,0.08)" }}>Stats</Link>
         </div>
       </nav>
 
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "120px 32px 80px" }}>
+      <div style={{ maxWidth: 800, margin: "0 auto", padding: "80px 20px 60px" }}>
+
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <div style={{ fontSize: 10, fontWeight: 300, letterSpacing: "0.28em", textTransform: "uppercase", color: "#818cf8", marginBottom: 16 }}>
-            Live · Celo Mainnet
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#35D07F", boxShadow: "0 0 8px #35D07F" }} />
+            <span style={{ fontSize: 12, fontWeight: 500, color: "rgba(53,208,127,0.7)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Live · Celo Mainnet</span>
           </div>
-          <h1 style={{ fontSize: "clamp(2rem, 6vw, 4rem)", fontWeight: 100, letterSpacing: "-0.03em", color: "#e8e4dc", textTransform: "uppercase", marginBottom: 8, lineHeight: 1 }}>
+          <h1 style={{ fontSize: "clamp(1.8rem, 4vw, 2.6rem)", fontWeight: 700, color: "#E8EDE9", letterSpacing: "-0.02em", marginBottom: 6 }}>
             Dashboard
           </h1>
-          <p style={{ fontSize: 14, fontWeight: 300, color: "rgba(232,228,220,0.35)", marginBottom: 48 }}>
+          <p style={{ fontSize: 14, color: "rgba(232,237,233,0.4)" }}>
             Real-time onchain activity from the TeachAgent payment contract
           </p>
         </motion.div>
 
         {loading && (
           <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1.5 }}
-            style={{ fontSize: 13, fontWeight: 300, color: "#818cf8", letterSpacing: "0.15em" }}>
-            Loading onchain data...
+            style={{ fontSize: 14, color: "rgba(53,208,127,0.6)", fontWeight: 500 }}>
+            Loading onchain data…
           </motion.div>
         )}
 
         {error && (
-          <div style={{ fontSize: 13, fontWeight: 300, color: "rgba(232,228,220,0.4)", padding: "20px", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ padding: "16px 20px", background: "rgba(251,204,92,0.06)", border: "1px solid rgba(251,204,92,0.2)", borderRadius: 10, fontSize: 13, color: "rgba(251,204,92,0.7)" }}>
             {error}
           </div>
         )}
@@ -120,122 +114,94 @@ export default function StatsPage() {
         {stats && (
           <>
             {/* Key metrics */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 1, marginBottom: 1 }}>
-              <Stat label="Questions Asked" value={stats.totalQuestions.toLocaleString()} sub="onchain transactions" />
-              <Stat label="CELO Paid" value={stats.totalCELO.toFixed(3)} sub="0.001 CELO per question" />
-              <Stat label="Unique Learners" value={stats.uniqueUsers.toLocaleString()} sub="wallet addresses" />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+              <StatCard label="Questions Asked" value={stats.totalQuestions.toLocaleString()} sub="onchain transactions" delay={0.1} />
+              <StatCard label="CELO Paid" value={stats.totalCELO.toFixed(3)} sub="0.001 CELO each" delay={0.15} />
+              <StatCard label="Unique Learners" value={stats.uniqueUsers.toLocaleString()} sub="wallet addresses" delay={0.2} />
             </div>
 
             {/* Contract info */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              style={{ marginTop: 1, padding: "16px 24px", border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)", display: "flex", flexWrap: "wrap", gap: 24, alignItems: "center", marginBottom: 48 }}
+              transition={{ delay: 0.25 }}
+              style={{ marginBottom: 32, padding: "14px 20px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center" }}
             >
               <div>
-                <div style={{ fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(232,228,220,0.25)", marginBottom: 4 }}>Contract</div>
-                <a
-                  href={`https://celoscan.io/address/${stats.contract}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ fontSize: 11, fontWeight: 300, color: "rgba(129,140,248,0.7)", textDecoration: "none", fontFamily: "monospace" }}
-                >
-                  {stats.contract}
+                <div style={{ fontSize: 11, color: "rgba(232,237,233,0.3)", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em" }}>Contract</div>
+                <a href={`https://celoscan.io/address/${stats.contract}`} target="_blank" rel="noopener noreferrer"
+                  style={{ fontSize: 12, fontWeight: 500, color: "rgba(53,208,127,0.6)", textDecoration: "none", fontFamily: "monospace" }}>
+                  {stats.contract.slice(0, 12)}…{stats.contract.slice(-8)}
                 </a>
               </div>
               <div>
-                <div style={{ fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(232,228,220,0.25)", marginBottom: 4 }}>Network</div>
-                <span style={{ fontSize: 11, fontWeight: 300, color: "rgba(232,228,220,0.45)" }}>{stats.network}</span>
+                <div style={{ fontSize: 11, color: "rgba(232,237,233,0.3)", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em" }}>Network</div>
+                <span style={{ fontSize: 12, fontWeight: 500, color: "rgba(232,237,233,0.5)" }}>{stats.network}</span>
               </div>
               <div style={{ marginLeft: "auto" }}>
-                <div style={{ fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(232,228,220,0.25)", marginBottom: 4 }}>Updated</div>
-                <span style={{ fontSize: 11, fontWeight: 300, color: "rgba(232,228,220,0.3)" }}>
+                <div style={{ fontSize: 11, color: "rgba(232,237,233,0.3)", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em" }}>Updated</div>
+                <span style={{ fontSize: 12, color: "rgba(232,237,233,0.35)" }}>
                   {new Date(stats.updatedAt).toLocaleTimeString()}
                 </span>
               </div>
             </motion.div>
 
             {/* Leaderboard */}
-            {stats.leaderboard.length > 0 && (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                <div style={{ fontSize: 10, fontWeight: 300, letterSpacing: "0.25em", textTransform: "uppercase", color: "rgba(232,228,220,0.3)", marginBottom: 20 }}>
+            {stats.leaderboard.length > 0 ? (
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(232,237,233,0.6)", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   Top Learners
                 </div>
-                <div style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+                <div style={{ border: "1px solid rgba(53,208,127,0.1)", borderRadius: 12, overflow: "hidden" }}>
                   {stats.leaderboard.map((entry, i) => (
                     <motion.div
                       key={entry.address}
-                      initial={{ opacity: 0, x: -10 }}
+                      initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.3 + i * 0.05 }}
+                      transition={{ delay: 0.3 + i * 0.04 }}
                       style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 20,
-                        padding: "14px 20px",
-                        borderBottom: i < stats.leaderboard.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
-                        background: i === 0 ? "rgba(129,140,248,0.05)" : "transparent",
+                        display: "flex", alignItems: "center", gap: 16, padding: "13px 18px",
+                        borderBottom: i < stats.leaderboard.length - 1 ? "1px solid rgba(53,208,127,0.07)" : "none",
+                        background: i === 0 ? "rgba(53,208,127,0.05)" : "transparent",
                       }}
                     >
                       <span style={{
-                        fontSize: 11,
-                        fontWeight: i === 0 ? 500 : 300,
-                        color: i === 0 ? "#818cf8" : "rgba(232,228,220,0.25)",
-                        minWidth: 24,
-                        textAlign: "right",
+                        fontSize: 12, fontWeight: 700,
+                        color: i === 0 ? "#35D07F" : i === 1 ? "#FBCC5C" : "rgba(232,237,233,0.25)",
+                        minWidth: 20, textAlign: "center",
                       }}>
-                        {entry.rank}
+                        {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${entry.rank}`}
                       </span>
                       <a
                         href={`https://celoscan.io/address/${entry.address}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 300,
-                          color: i === 0 ? "rgba(232,228,220,0.8)" : "rgba(232,228,220,0.45)",
-                          fontFamily: "monospace",
-                          flex: 1,
-                          textDecoration: "none",
-                        }}
+                        target="_blank" rel="noopener noreferrer"
+                        style={{ fontSize: 13, fontWeight: 500, color: i === 0 ? "#E8EDE9" : "rgba(232,237,233,0.5)", fontFamily: "monospace", flex: 1, textDecoration: "none" }}
                       >
-                        {entry.address.slice(0, 10)}...{entry.address.slice(-8)}
+                        {entry.address.slice(0, 10)}…{entry.address.slice(-8)}
                       </a>
-                      <span style={{ fontSize: 11, fontWeight: 300, color: i === 0 ? "#818cf8" : "rgba(232,228,220,0.3)", whiteSpace: "nowrap" }}>
-                        {entry.questions} question{entry.questions !== 1 ? "s" : ""}
+                      <span style={{ fontSize: 12, fontWeight: 600, color: i === 0 ? "#35D07F" : "rgba(232,237,233,0.35)", whiteSpace: "nowrap" }}>
+                        {entry.questions} {entry.questions === 1 ? "question" : "questions"}
                       </span>
                     </motion.div>
                   ))}
                 </div>
               </motion.div>
-            )}
-
-            {stats.leaderboard.length === 0 && (
-              <div style={{ padding: "32px", border: "1px solid rgba(255,255,255,0.07)", textAlign: "center" }}>
-                <p style={{ fontSize: 13, fontWeight: 300, color: "rgba(232,228,220,0.3)" }}>
-                  No onchain activity yet. Be the first learner.
-                </p>
-                <Link href="/" style={{ fontSize: 10, color: "#818cf8", letterSpacing: "0.2em", textTransform: "uppercase", textDecoration: "none", display: "inline-block", marginTop: 12 }}>
-                  Ask a question →
-                </Link>
+            ) : (
+              <div style={{ padding: "32px", border: "1px solid rgba(53,208,127,0.1)", borderRadius: 12, textAlign: "center" }}>
+                <p style={{ fontSize: 14, color: "rgba(232,237,233,0.3)", marginBottom: 12 }}>No transactions yet. Be the first learner on the leaderboard.</p>
+                <Link href="/" style={{ fontSize: 13, fontWeight: 600, color: "#35D07F", textDecoration: "none" }}>Ask your first question →</Link>
               </div>
             )}
 
             {/* CTA */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              style={{ marginTop: 48, textAlign: "center" }}
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+              style={{ marginTop: 40, textAlign: "center" }}>
               <Link href="/" style={{
-                display: "inline-block",
-                fontSize: 11, fontWeight: 300, letterSpacing: "0.2em", textTransform: "uppercase",
-                color: "#e8e4dc", background: "rgba(79,70,229,0.7)",
-                padding: "14px 32px", textDecoration: "none",
+                display: "inline-flex", alignItems: "center", gap: 8,
+                fontSize: 14, fontWeight: 600, color: "#0A0F0D",
+                background: "#35D07F", padding: "12px 28px", borderRadius: 10, textDecoration: "none",
               }}>
-                Ask a Question →
+                Ask a Question
               </Link>
             </motion.div>
           </>
