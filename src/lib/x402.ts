@@ -78,7 +78,8 @@ export async function verifyPayment(
       ) {
         try {
           const parsed = ERC20_TRANSFER_IFACE.parseLog(log)
-          const { from, to, value } = parsed.args as { from: string; to: string; value: ethers.BigNumber }
+          const pargs = parsed.args as unknown as { from: string; to: string; value: ethers.BigNumber }
+          const { from, to, value } = pargs
           if (
             to.toLowerCase() === TEACH_AGENT_CONTRACT.toLowerCase() &&
             from.toLowerCase() === studentAddress.toLowerCase() &&
