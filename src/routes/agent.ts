@@ -93,9 +93,12 @@ agentRouter.post("/session", async (req: Request, res: Response) => {
 })
 
 // GET /agent/stats — live on-chain metrics for the stats dashboard
+const CUSD_ADDRESS = "0x765DE816845861e75A25fCA122bb6898B8B1282a"
+const PRICE_CUSD = ethers.utils.parseEther("0.001")
+
 agentRouter.get("/stats", async (_req: Request, res: Response) => {
-  // Step 1: read totalQuestions from contract
-  let totalQuestions = 0
+  // Step 1: read totalQuestions from contract (native CELO payments only)
+  let celoQuestions = 0
   try {
     const contract = new ethers.Contract(
       TEACH_AGENT_CONTRACT,
@@ -103,27 +106,24 @@ agentRouter.get("/stats", async (_req: Request, res: Response) => {
       provider
     )
     const raw: ethers.BigNumber = await contract.totalQuestions()
-    totalQuestions = raw.toNumber()
+    celoQuestions = raw.toNumber()
   } catch (err: any) {
     console.error("[stats] totalQuestions failed:", err.message)
     return res.status(500).json({ error: `Contract read failed: ${err.message}` })
   }
 
-  // Step 2: query events for unique users + leaderboard (non-fatal if RPC fails)
-  let uniqueUsers = 0
-  let leaderboard: { rank: number; address: string; questions: number }[] = []
+  const userCounts: Record<string, number> = {}
+  const currentBlock = await provider.getBlockNumber().catch(() => 0)
+  const FROM_BLOCK = Math.max(currentBlock - 500_000, 0)
+
+  // Step 2: QuestionPaid events — native CELO payments (non-fatal)
   try {
     const contract = new ethers.Contract(
       TEACH_AGENT_CONTRACT,
       ["event QuestionPaid(address indexed student, uint256 indexed questionId, uint256 amount)"],
       provider
     )
-    const currentBlock = await provider.getBlockNumber()
-    const FROM_BLOCK = Math.max(currentBlock - 500_000, 0)
-    const filter = contract.filters.QuestionPaid()
-    const events = await contract.queryFilter(filter, FROM_BLOCK, "latest")
-
-    const userCounts: Record<string, number> = {}
+    const events = await contract.queryFilter(contract.filters.QuestionPaid(), FROM_BLOCK, "latest")
     for (const ev of events) {
       const args = (ev as ethers.Event & { args: { student: string } }).args
       if (args?.student) {
@@ -131,19 +131,43 @@ agentRouter.get("/stats", async (_req: Request, res: Response) => {
         userCounts[addr] = (userCounts[addr] || 0) + 1
       }
     }
-    uniqueUsers = Object.keys(userCounts).length
-    leaderboard = Object.entries(userCounts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 10)
-      .map(([address, questions], i) => ({ rank: i + 1, address, questions }))
   } catch (err: any) {
-    console.error("[stats] event query failed (non-fatal):", err.message)
+    console.error("[stats] QuestionPaid query failed (non-fatal):", err.message)
   }
+
+  // Step 3: cUSD Transfer events to contract — MiniPay payments (non-fatal)
+  let cusdQuestions = 0
+  try {
+    const cUSD = new ethers.Contract(
+      CUSD_ADDRESS,
+      ["event Transfer(address indexed from, address indexed to, uint256 value)"],
+      provider
+    )
+    const filter = cUSD.filters.Transfer(null, TEACH_AGENT_CONTRACT)
+    const events = await cUSD.queryFilter(filter, FROM_BLOCK, "latest")
+    for (const ev of events) {
+      const args = (ev as ethers.Event & { args: { from: string; to: string; value: ethers.BigNumber } }).args
+      if (args?.value?.gte(PRICE_CUSD)) {
+        const addr = args.from.toLowerCase()
+        userCounts[addr] = (userCounts[addr] || 0) + 1
+        cusdQuestions++
+      }
+    }
+  } catch (err: any) {
+    console.error("[stats] cUSD Transfer query failed (non-fatal):", err.message)
+  }
+
+  const totalQuestions = celoQuestions + cusdQuestions
+  const leaderboard = Object.entries(userCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 10)
+    .map(([address, questions], i) => ({ rank: i + 1, address, questions }))
 
   res.json({
     totalQuestions,
-    totalCELO: parseFloat((totalQuestions * 0.001).toFixed(4)),
-    uniqueUsers,
+    totalCELO: parseFloat((celoQuestions * 0.001).toFixed(4)),
+    totalCUSD: parseFloat((cusdQuestions * 0.001).toFixed(4)),
+    uniqueUsers: Object.keys(userCounts).length,
     leaderboard,
     contract: TEACH_AGENT_CONTRACT,
     network: "Celo Mainnet",
