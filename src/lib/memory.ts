@@ -22,6 +22,7 @@ const usedHashesSet = new Set<string>()
 
 const HISTORY_KEY = (addr: string) => `ta:history:${addr.toLowerCase()}`
 const USED_KEY = (hash: string) => `ta:used:${hash.toLowerCase()}`
+const FREE_KEY = (addr: string) => `ta:free:${addr.toLowerCase()}`
 const MAX_HISTORY = 6
 
 export async function getHistory(address: string): Promise<Message[]> {
@@ -64,9 +65,33 @@ export async function markTxUsed(txHash: string): Promise<void> {
     return
   }
   try {
-    // Keep used hash record for 30 days
     await redis.set(USED_KEY(txHash), 1, { ex: 60 * 60 * 24 * 30 })
   } catch {
     usedHashesSet.add(txHash.toLowerCase())
+  }
+}
+
+// In-memory fallback for free question tracking
+const freeUsedSet = new Set<string>()
+
+export async function isFreeUsed(address: string): Promise<boolean> {
+  if (!redis) return freeUsedSet.has(address.toLowerCase())
+  try {
+    const val = await redis.get(FREE_KEY(address))
+    return val === 1
+  } catch {
+    return freeUsedSet.has(address.toLowerCase())
+  }
+}
+
+export async function markFreeUsed(address: string): Promise<void> {
+  if (!redis) {
+    freeUsedSet.add(address.toLowerCase())
+    return
+  }
+  try {
+    await redis.set(FREE_KEY(address), 1)
+  } catch {
+    freeUsedSet.add(address.toLowerCase())
   }
 }
