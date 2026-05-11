@@ -14,15 +14,15 @@ createAppKit({
   defaultNetwork: celo,
   metadata: {
     name: "TeachAgent",
-    description: "AI agent for educator reputation on Celo",
+    description: "AI tutor for the Celo blockchain — 0.001 CELO per question",
     url: "https://teach-agent.vercel.app",
     icons: ["https://teach-agent.vercel.app/favicon.ico"],
   },
   features: { analytics: false, email: false, socials: false },
-  themeMode: "dark",
+  themeMode: "light",
   themeVariables: {
-    "--w3m-accent": "#4f46e5",
-    "--w3m-border-radius-master": "0px",
+    "--w3m-accent": "#35D07F",
+    "--w3m-border-radius-master": "2px",
     "--w3m-font-family": "inherit",
   },
 })
