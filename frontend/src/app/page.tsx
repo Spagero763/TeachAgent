@@ -48,7 +48,7 @@ type Message = {
 
 /* ─── inline markdown renderer ─── */
 function renderInline(text: string): React.ReactNode {
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g)
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|https?:\/\/[^\s)\]>,"']+)/g)
   return (
     <>
       {parts.map((p, i) => {
@@ -58,6 +58,8 @@ function renderInline(text: string): React.ReactNode {
           return <em key={i} style={{ color: "#1B8A4F" }}>{p.slice(1, -1)}</em>
         if (p.startsWith("`") && p.endsWith("`"))
           return <code key={i} style={{ background: "rgba(53,208,127,0.1)", padding: "1px 6px", fontFamily: "monospace", fontSize: 12, color: "#1B8A4F", borderRadius: 4, border: "1px solid rgba(53,208,127,0.2)" }}>{p.slice(1, -1)}</code>
+        if (p.startsWith("http://") || p.startsWith("https://"))
+          return <a key={i} href={p} target="_blank" rel="noopener noreferrer" style={{ color: "#1B8A4F", textDecoration: "underline", textDecorationColor: "rgba(27,138,79,0.4)", textUnderlineOffset: 2, wordBreak: "break-all", transition: "color 0.15s" }} onMouseEnter={e => (e.currentTarget.style.color = "#35D07F")} onMouseLeave={e => (e.currentTarget.style.color = "#1B8A4F")}>{p}</a>
         return <span key={i}>{p}</span>
       })}
     </>
