@@ -10,11 +10,11 @@ export async function askCelo(question: string, history: { role: string, content
     return "TeachAgent AI is offline. Please try again later."
   }
 
-  // Use Gemini if available, fall back to Groq
-  if (GEMINI_API_KEY) {
-    return askCeloGemini(question, history)
+  // Use Groq if available, fall back to Gemini
+  if (GROQ_API_KEY) {
+    return askCeloGroq(question, history)
   }
-  return askCeloGroq(question, history)
+  return askCeloGemini(question, history)
 }
 
 async function askCeloGemini(question: string, history: { role: string, content: string }[] = []): Promise<string> {
