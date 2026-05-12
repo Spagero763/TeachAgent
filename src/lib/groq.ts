@@ -2,12 +2,22 @@ import axios from "axios"
 import dotenv from "dotenv"
 dotenv.config()
 
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ""
 const GROQ_API_KEY = process.env.GROQ_API_KEY || ""
 
 export async function askCelo(question: string, history: { role: string, content: string }[] = []): Promise<string> {
-  if (!GROQ_API_KEY) {
+  if (!GEMINI_API_KEY && !GROQ_API_KEY) {
     return "TeachAgent AI is offline. Please try again later."
   }
+
+  // Use Gemini if available, fall back to Groq
+  if (GEMINI_API_KEY) {
+    return askCeloGemini(question, history)
+  }
+  return askCeloGroq(question, history)
+}
+
+async function askCeloGemini(question: string, history: { role: string, content: string }[] = []): Promise<string> {
   try {
     const messages = [
       {
@@ -274,13 +284,44 @@ Key contract addresses on Celo Mainnet:
       { role: "user", content: question },
     ]
 
+    // Convert to Gemini format
+    const systemPrompt = messages[0].content
+    const chatHistory = messages.slice(1, -1).map((m: any) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    }))
+    const lastMessage = messages[messages.length - 1].content
+
+    const res = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [
+          ...chatHistory,
+          { role: "user", parts: [{ text: lastMessage }] },
+        ],
+        generationConfig: { maxOutputTokens: 2048, temperature: 0.3 },
+      },
+      { headers: { "Content-Type": "application/json" } }
+    )
+    return res.data.candidates[0].content.parts[0].text
+  } catch (err: any) {
+    throw new Error(`AI error: ${err?.response?.data?.error?.message || err.message}`)
+  }
+}
+
+async function askCeloGroq(question: string, history: { role: string, content: string }[] = []): Promise<string> {
+  try {
     const res = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
       {
         model: "llama-3.3-70b-versatile",
         max_tokens: 2048,
         temperature: 0.3,
-        messages: messages,
+        messages: [
+          ...history,
+          { role: "user", content: question },
+        ],
       },
       {
         headers: {
