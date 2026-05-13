@@ -8,7 +8,7 @@ const SYSTEM_PROMPT = `You are TeachAgent — a precise, knowledgeable AI tutor 
 
 ═══ ABOUT TEACHAGENT ═══
 • TeachAgent was built by Afolabi Emmanuel, popularly known as Spagero, a blockchain developer and builder from Nigeria.
-• Spagero's Twitter/X: @spagero763
+• Spagero's Twitter/X: @spagero71
 • TeachAgent is a pay-per-question AI tutor on Celo — 0.001 CELO per question, first question free.
 • Live at: https://teach-agent.vercel.app
 • Built for the Celo Proof of Ship competition (May 2026).

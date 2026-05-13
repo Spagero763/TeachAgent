@@ -31,6 +31,14 @@ agentRouter.post("/session", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "question is required" })
   }
 
+  // Limit question length — prevent token flooding / prompt injection
+  if (question.trim().length > 1000) {
+    return res.status(400).json({ error: "Question too long. Max 1000 characters." })
+  }
+
+  // Sanitize question — strip control characters
+  const cleanQuestion = question.trim().replace(/[\x00-\x1F\x7F]/g, " ")
+
   // No payment yet — check if wallet qualifies for free first question
   if (!txHash) {
     if (!studentAddress || !ethers.utils.isAddress(studentAddress)) {
@@ -40,7 +48,7 @@ agentRouter.post("/session", async (req: Request, res: Response) => {
     if (!freeUsed) {
       // Answer the first question for free
       const history = await getHistory(studentAddress)
-      const answer = await askCelo(question.trim(), history)
+      const answer = await askCelo(cleanQuestion, history)
       await saveHistory(studentAddress, [
         ...history,
         { role: "user", content: question.trim() },
@@ -48,7 +56,7 @@ agentRouter.post("/session", async (req: Request, res: Response) => {
       ])
       await markFreeUsed(studentAddress)
       return res.json({
-        question: question.trim(),
+        question: cleanQuestion,
         answer,
         sessionAt: new Date().toISOString(),
         freeQuestion: true,
@@ -85,7 +93,7 @@ agentRouter.post("/session", async (req: Request, res: Response) => {
     }
 
     const history = await getHistory(studentAddress)
-    const answer = await askCelo(question.trim(), history)
+    const answer = await askCelo(cleanQuestion, history)
 
     await saveHistory(studentAddress, [
       ...history,
@@ -97,7 +105,7 @@ agentRouter.post("/session", async (req: Request, res: Response) => {
     await markTxUsed(txHash)
 
     res.json({
-      question: question.trim(),
+      question: cleanQuestion,
       answer,
       sessionAt: new Date().toISOString(),
       payment: {

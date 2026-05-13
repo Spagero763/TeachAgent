@@ -1,5 +1,7 @@
 import express from "express"
 import cors from "cors"
+import helmet from "helmet"
+import rateLimit from "express-rate-limit"
 import dotenv from "dotenv"
 import path from "path"
 
@@ -8,8 +10,40 @@ dotenv.config()
 const app = express()
 const PORT = process.env.PORT || 3001
 
-app.use(cors())
-app.use(express.json())
+// Security headers
+app.use(helmet())
+
+// CORS — only allow the frontend
+app.use(cors({
+  origin: [
+    "https://teach-agent.vercel.app",
+    "http://localhost:3000",
+  ],
+  methods: ["GET", "POST"],
+}))
+
+// Limit request body size — prevent large payload attacks
+app.use(express.json({ limit: "10kb" }))
+
+// Rate limit — max 30 requests per minute per IP
+const limiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: { error: "Too many requests. Please wait a moment and try again." },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+app.use("/agent", limiter)
+
+// Stricter rate limit on /session — max 10 per minute per IP
+const sessionLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: "Too many questions. Please wait a moment and try again." },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+app.use("/agent/session", sessionLimiter)
 app.use("/.well-known", express.static(path.join(__dirname, "../public/.well-known")))
 
 app.get("/", (_req, res) => {
