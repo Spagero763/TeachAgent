@@ -44,6 +44,7 @@ type Message = {
   txHash?: string
   free?: boolean
   fromHistory?: boolean
+  timestamp?: string
 }
 
 /* ─── inline markdown renderer ─── */
@@ -237,7 +238,7 @@ export default function Home() {
   const currentAddress = miniPayAddress || address
 
   const addMessage = useCallback((msg: Message) => {
-    setMessages(prev => [...prev, msg])
+    setMessages(prev => [...prev, { ...msg, timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }])
   }, [])
 
   async function callPay(signerAddr: string, eth: any, wcProvider?: any): Promise<string> {
@@ -557,15 +558,20 @@ export default function Home() {
                 }
               </div>
 
-              {msg.txHash && (
-                <a href={`https://celoscan.io/tx/${msg.txHash}`} target="_blank" rel="noopener noreferrer"
-                  style={{ fontSize: 11, color: "rgba(53,208,127,0.6)", marginTop: 4, textDecoration: "none", fontWeight: 500, transition: "color 0.15s" }}
-                  onMouseEnter={e => (e.currentTarget.style.color = "#35D07F")}
-                  onMouseLeave={e => (e.currentTarget.style.color = "rgba(53,208,127,0.6)")}
-                >
-                  ↗ View on Celoscan
-                </a>
-              )}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4 }}>
+                {msg.timestamp && (
+                  <span style={{ fontSize: 10, color: "rgba(15,31,22,0.3)", fontWeight: 400 }}>{msg.timestamp}</span>
+                )}
+                {msg.txHash && (
+                  <a href={`https://celoscan.io/tx/${msg.txHash}`} target="_blank" rel="noopener noreferrer"
+                    style={{ fontSize: 11, color: "rgba(53,208,127,0.6)", textDecoration: "none", fontWeight: 500, transition: "color 0.15s" }}
+                    onMouseEnter={e => (e.currentTarget.style.color = "#35D07F")}
+                    onMouseLeave={e => (e.currentTarget.style.color = "rgba(53,208,127,0.6)")}
+                  >
+                    ↗ View on Celoscan
+                  </a>
+                )}
+              </div>
             </motion.div>
           ))}
 
