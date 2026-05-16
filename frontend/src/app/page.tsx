@@ -67,6 +67,33 @@ function renderInline(text: string): React.ReactNode {
   )
 }
 
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+  return (
+    <button onClick={handleCopy} title="Copy response" style={{
+      background: "none", border: "1px solid #E2EAE5", borderRadius: 7,
+      padding: "4px 8px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
+      color: copied ? "#35D07F" : "rgba(15,31,22,0.4)", fontSize: 11, fontWeight: 500,
+      fontFamily: "inherit", transition: "all 0.15s",
+    }}
+      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#35D07F"; (e.currentTarget as HTMLButtonElement).style.color = "#35D07F" }}
+      onMouseLeave={e => { if (!copied) { (e.currentTarget as HTMLButtonElement).style.borderColor = "#E2EAE5"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(15,31,22,0.4)" } }}
+    >
+      {copied ? (
+        <><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#35D07F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg> Copied!</>
+      ) : (
+        <><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" strokeWidth="2"/></svg> Copy</>
+      )}
+    </button>
+  )
+}
+
 function AgentMessage({ text }: { text: string }) {
   const paragraphs = text.split(/\n\n+/)
   return (
@@ -562,6 +589,7 @@ export default function Home() {
                 {msg.timestamp && (
                   <span style={{ fontSize: 10, color: "rgba(15,31,22,0.3)", fontWeight: 400 }}>{msg.timestamp}</span>
                 )}
+                {msg.role === "agent" && <CopyButton text={msg.text} />}
                 {msg.txHash && (
                   <a href={`https://celoscan.io/tx/${msg.txHash}`} target="_blank" rel="noopener noreferrer"
                     style={{ fontSize: 11, color: "rgba(53,208,127,0.6)", textDecoration: "none", fontWeight: 500, transition: "color 0.15s" }}
