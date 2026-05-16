@@ -103,9 +103,14 @@ function AgentMessage({ text }: { text: string }) {
         if (para.startsWith("```")) {
           const code = para.replace(/```[\w]*\n?/g, "").replace(/```/g, "").trim()
           return (
-            <pre key={pi} style={{ background: "#F0F4F1", border: "1px solid #D4E8DB", padding: "12px 16px", fontSize: 12.5, lineHeight: 1.75, overflow: "auto", fontFamily: "'JetBrains Mono', 'Courier New', monospace", marginBottom: 12, borderRadius: 10 }}>
-              <code style={{ color: "#1B8A4F" }}>{code}</code>
-            </pre>
+            <div key={pi} style={{ position: "relative", marginBottom: 12 }}>
+              <pre style={{ background: "#F0F4F1", border: "1px solid #D4E8DB", padding: "12px 16px", fontSize: 12.5, lineHeight: 1.75, overflow: "auto", fontFamily: "'JetBrains Mono', 'Courier New', monospace", borderRadius: 10, margin: 0 }}>
+                <code style={{ color: "#1B8A4F" }}>{code}</code>
+              </pre>
+              <div style={{ position: "absolute", top: 8, right: 8 }}>
+                <CopyButton text={code} />
+              </div>
+            </div>
           )
         }
         if (para.startsWith("# ") || para.startsWith("## ") || para.startsWith("### ")) {
