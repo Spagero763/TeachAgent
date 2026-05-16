@@ -269,6 +269,22 @@ export default function Home() {
   const connected = isConnected || !!miniPayAddress
   const currentAddress = miniPayAddress || address
 
+  const downloadConversation = useCallback(() => {
+    if (messages.length === 0) return
+    const lines = messages.map(m => {
+      const role = m.role === "agent" ? "TeachAgent" : m.role === "user" ? "You" : "Notice"
+      const time = m.timestamp ? ` [${m.timestamp}]` : ""
+      return `${role}${time}:\n${m.text}\n`
+    }).join("\n---\n\n")
+    const blob = new Blob([`TeachAgent Conversation\n${"=".repeat(40)}\n\n${lines}`], { type: "text/plain" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `teachagent-conversation-${new Date().toISOString().slice(0, 10)}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [messages])
+
   const addMessage = useCallback((msg: Message) => {
     setMessages(prev => [...prev, { ...msg, timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }])
   }, [])
@@ -532,6 +548,23 @@ export default function Home() {
           flex: 1, maxWidth: 720, width: "100%", margin: "0 auto",
           padding: "72px 16px 170px",
         }}>
+          {/* Download conversation button */}
+          {messages.length > 0 && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+              <button onClick={downloadConversation} style={{
+                background: "none", border: "1px solid #E2EAE5", borderRadius: 8,
+                padding: "5px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
+                color: "rgba(15,31,22,0.4)", fontSize: 12, fontWeight: 500, fontFamily: "inherit", transition: "all 0.15s",
+              }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#35D07F"; (e.currentTarget as HTMLButtonElement).style.color = "#35D07F" }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#E2EAE5"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(15,31,22,0.4)" }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                Download chat
+              </button>
+            </div>
+          )}
+
           {/* Previous session divider */}
           {messages.some(m => m.fromHistory) && (
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
