@@ -115,7 +115,7 @@ export default function StatsPage() {
               <StatCard label="Total Questions" value={stats.totalQuestions.toLocaleString()} sub="CELO + MiniPay" delay={0} />
               <StatCard label="CELO Earned" value={stats.totalCELO.toFixed(3)} sub="via payForQuestion()" delay={0.06} />
               <StatCard label="cUSD Earned" value={(stats.totalCUSD ?? 0).toFixed(3)} sub="via MiniPay" delay={0.12} />
-              <StatCard label="Unique Learners" value={stats.uniqueUsers.toLocaleString()} sub="last 500k blocks" delay={0.18} />
+              <StatCard label="Unique Learners" value={stats.uniqueUsers.toLocaleString()} sub="all time" delay={0.18} />
             </div>
 
             <motion.div

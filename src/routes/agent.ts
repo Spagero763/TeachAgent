@@ -142,8 +142,25 @@ agentRouter.get("/stats", async (_req: Request, res: Response) => {
   }
 
   const userCounts: Record<string, number> = {}
+  // Contract deployment block — query all events since contract was created
+  const CONTRACT_DEPLOY_BLOCK = 64514140
   const currentBlock = await provider.getBlockNumber().catch(() => 0)
-  const FROM_BLOCK = Math.max(currentBlock - 500_000, 0)
+
+  // Helper: query events in chunks to avoid RPC limits (max 10K blocks per call)
+  const CHUNK_SIZE = 10000
+  async function queryInChunks(contract: ethers.Contract, filter: ethers.EventFilter): Promise<ethers.Event[]> {
+    const allEvents: ethers.Event[] = []
+    for (let from = CONTRACT_DEPLOY_BLOCK; from <= currentBlock; from += CHUNK_SIZE) {
+      const to = Math.min(from + CHUNK_SIZE - 1, currentBlock)
+      try {
+        const events = await contract.queryFilter(filter, from, to)
+        allEvents.push(...events)
+      } catch (err: any) {
+        console.error(`[stats] chunk ${from}-${to} failed:`, err.message)
+      }
+    }
+    return allEvents
+  }
 
   // Step 2: QuestionPaid events — native CELO payments (non-fatal)
   try {
@@ -152,7 +169,7 @@ agentRouter.get("/stats", async (_req: Request, res: Response) => {
       ["event QuestionPaid(address indexed student, uint256 indexed questionId, uint256 amount)"],
       provider
     )
-    const events = await contract.queryFilter(contract.filters.QuestionPaid(), FROM_BLOCK, "latest")
+    const events = await queryInChunks(contract, contract.filters.QuestionPaid())
     for (const ev of events) {
       const args = (ev as ethers.Event & { args: { student: string } }).args
       if (args?.student) {
@@ -173,7 +190,7 @@ agentRouter.get("/stats", async (_req: Request, res: Response) => {
       provider
     )
     const filter = cUSD.filters.Transfer(null, TEACH_AGENT_CONTRACT)
-    const events = await cUSD.queryFilter(filter, FROM_BLOCK, "latest")
+    const events = await queryInChunks(cUSD, filter)
     for (const ev of events) {
       const args = (ev as ethers.Event & { args: { from: string; to: string; value: ethers.BigNumber } }).args
       if (args?.value?.gte(PRICE_CUSD)) {
