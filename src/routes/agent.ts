@@ -125,7 +125,16 @@ agentRouter.post("/session", async (req: Request, res: Response) => {
 const CUSD_ADDRESS = "0x765DE816845861e75A25fCA122bb6898B8B1282a"
 const PRICE_CUSD = ethers.utils.parseEther("0.001")
 
+// Cache stats for 30s to avoid hammering Forno RPC on every page load
+let statsCache: { data: any; expires: number } | null = null
+const STATS_CACHE_TTL_MS = 30_000
+
 agentRouter.get("/stats", async (_req: Request, res: Response) => {
+  // Serve cached response if fresh
+  if (statsCache && Date.now() < statsCache.expires) {
+    return res.json({ ...statsCache.data, cached: true })
+  }
+
   // Step 1: read totalQuestions from contract (native CELO payments only)
   let celoQuestions = 0
   try {
@@ -209,7 +218,7 @@ agentRouter.get("/stats", async (_req: Request, res: Response) => {
     .slice(0, 10)
     .map(([address, questions], i) => ({ rank: i + 1, address, questions }))
 
-  res.json({
+  const response = {
     totalQuestions,
     totalCELO: parseFloat((celoQuestions * 0.001).toFixed(4)),
     totalCUSD: parseFloat((cusdQuestions * 0.001).toFixed(4)),
@@ -218,7 +227,12 @@ agentRouter.get("/stats", async (_req: Request, res: Response) => {
     contract: TEACH_AGENT_CONTRACT,
     network: "Celo Mainnet",
     updatedAt: new Date().toISOString(),
-  })
+  }
+
+  // Cache for 30s
+  statsCache = { data: response, expires: Date.now() + STATS_CACHE_TTL_MS }
+
+  res.json(response)
 })
 
 // GET /agent/history/:address — return stored conversation history for a wallet
