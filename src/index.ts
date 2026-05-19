@@ -25,8 +25,8 @@ app.use(cors({
   methods: ["GET", "POST"],
 }))
 
-// Limit request body size — prevent large payload attacks
-app.use(express.json({ limit: "10kb" }))
+// Limit request body size — prevent extreme payload attacks (1MB is plenty for questions)
+app.use(express.json({ limit: "1mb" }))
 
 // Rate limit — max 30 requests per minute per IP
 const limiter = rateLimit({

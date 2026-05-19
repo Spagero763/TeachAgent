@@ -31,11 +31,6 @@ agentRouter.post("/session", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "question is required" })
   }
 
-  // Limit question length — prevent token flooding / prompt injection
-  if (question.trim().length > 1000) {
-    return res.status(400).json({ error: "Question too long. Max 1000 characters." })
-  }
-
   // Sanitize question — strip control characters
   const cleanQuestion = question.trim().replace(/[\x00-\x1F\x7F]/g, " ")
 
