@@ -30,6 +30,12 @@ export const agentCard = {
   identity: {
     standard: "ERC-8004",
     chain: 42220,
-    registry: "0x8004A818BFB912233c491871b3d84c89A494BD9e"
+    identityRegistry: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+    reputationRegistry: "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63"
+  },
+  developer: {
+    name: "Afolabi Emmanuel (Spagero)",
+    twitter: "@spagero71",
+    github: "https://github.com/Spagero763/TeachAgent"
   }
 }
