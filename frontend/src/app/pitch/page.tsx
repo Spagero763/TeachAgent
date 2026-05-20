@@ -235,10 +235,6 @@ export default function PitchPage() {
           <div style={{ fontSize: 22, fontWeight: 800, color: "#fff", marginBottom: 8 }}>Try TeachAgent now</div>
           <a href="https://teach-agent.vercel.app" target="_blank" rel="noopener noreferrer" style={{ fontSize: 18, fontWeight: 700, color: "#fff", textDecoration: "underline", textUnderlineOffset: 4 }}>teach-agent.vercel.app</a>
         </motion.div>
-
-        <div style={{ textAlign: "center", marginTop: 36, fontSize: 12, color: "rgba(15,31,22,0.35)" }}>
-          Submitted to the Onchain Agents Hackathon · Celo · 2026
-        </div>
       </SlideShell>
 
     </div>
