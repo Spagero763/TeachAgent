@@ -147,7 +147,8 @@ agentRouter.get("/stats", async (_req: Request, res: Response) => {
 
   const userCounts: Record<string, number> = {}
   // Contract deployment block — query all events since contract was created
-  const CONTRACT_DEPLOY_BLOCK = 64514140
+  // V2 contract (0x28f3...261C) deployed ~block 67460000 on Celo Mainnet
+  const CONTRACT_DEPLOY_BLOCK = 67460000
   const currentBlock = await provider.getBlockNumber().catch(() => 0)
 
   // Helper: query events in chunks to avoid RPC limits (max 10K blocks per call)

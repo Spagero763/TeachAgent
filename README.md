@@ -91,7 +91,7 @@ GET https://teachagent.onrender.com/agent/health
 
 | Contract | Address |
 |----------|---------|
-| TeachAgentPayment | `0x6a818b6E70fe033d3b70b5D0bEfFd7e32FB221cA` |
+| TeachAgentPayment | `0x28f31060791aDEB994283Bc804E804F5ff26261C` |
 | cUSD (Celo Mainnet, Mento) | `0x765DE816845861e75A25fCA122bb6898B8B1282a` |
 | AgentRegistry (ERC-8004) | `0x8004A818BFB912233c491871b3d84c89A494BD9e` |
 

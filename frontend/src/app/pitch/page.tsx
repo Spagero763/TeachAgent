@@ -201,7 +201,7 @@ export default function PitchPage() {
         <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.4 }} style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <a href="https://dune.com/spagero763/teachagent-celo-analytics" target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, fontWeight: 600, color: "#1B8A4F", textDecoration: "none", background: "#EBF9F2", border: "1px solid #B6EDCF", borderRadius: 100, padding: "9px 18px" }}>↗ Live Dune dashboard</a>
           <a href="https://8004scan.io/agents/celo/9099" target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, fontWeight: 600, color: "#1B8A4F", textDecoration: "none", background: "#EBF9F2", border: "1px solid #B6EDCF", borderRadius: 100, padding: "9px 18px" }}>↗ View on 8004scan</a>
-          <a href="https://celoscan.io/address/0x6a818b6E70fe033d3b70b5D0bEfFd7e32FB221cA" target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, fontWeight: 600, color: "#1B8A4F", textDecoration: "none", background: "#EBF9F2", border: "1px solid #B6EDCF", borderRadius: 100, padding: "9px 18px" }}>↗ Contract on Celoscan</a>
+          <a href="https://celoscan.io/address/0x28f31060791aDEB994283Bc804E804F5ff26261C" target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, fontWeight: 600, color: "#1B8A4F", textDecoration: "none", background: "#EBF9F2", border: "1px solid #B6EDCF", borderRadius: 100, padding: "9px 18px" }}>↗ Contract on Celoscan</a>
         </motion.div>
       </SlideShell>
 

@@ -126,7 +126,7 @@ Base URL: https://teachagent.onrender.com
 |---|---|
 | Free tier | First query per address |
 | Price | 0.001 CELO (or 0.001 cUSD via MiniPay) |
-| Contract | 0x6a818b6E70fe033d3b70b5D0bEfFd7e32FB221cA |
+| Contract | 0x28f31060791aDEB994283Bc804E804F5ff26261C |
 | Method | payForQuestion() (CELO) or cUSD transfer() |
 | Network | Celo Mainnet (chainId 42220) |
 | Standard | x402 (HTTP 402 Payment Required) |

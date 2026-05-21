@@ -1,6 +1,6 @@
 import { ethers } from "ethers"
 
-export const TEACH_AGENT_CONTRACT = "0x6a818b6E70fe033d3b70b5D0bEfFd7e32FB221cA"
+export const TEACH_AGENT_CONTRACT = "0x28f31060791aDEB994283Bc804E804F5ff26261C"
 export const PRICE_CELO = ethers.utils.parseEther("0.001")
 
 // cUSD on Celo Mainnet — used for MiniPay payments (MiniPay CIP-64 drops `value`)

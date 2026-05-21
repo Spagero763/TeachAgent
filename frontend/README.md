@@ -103,7 +103,7 @@ The backend verifies this as a valid cUSD payment by checking `Transfer` events 
 
 | | Address |
 |---|---|
-| TeachAgentPayment | `0x6a818b6E70fe033d3b70b5D0bEfFd7e32FB221cA` |
+| TeachAgentPayment | `0x28f31060791aDEB994283Bc804E804F5ff26261C` |
 | cUSD (Mento, Celo Mainnet) | `0x765DE816845861e75A25fCA122bb6898B8B1282a` |
 
 Network: Celo Mainnet · Chain ID: 42220  

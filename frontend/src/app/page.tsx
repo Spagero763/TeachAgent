@@ -9,7 +9,7 @@ import { ethers } from "ethers"
 import Link from "next/link"
 
 const AGENT_URL = "https://teachagent.onrender.com"
-const TEACH_AGENT_CONTRACT = "0x6a818b6E70fe033d3b70b5D0bEfFd7e32FB221cA"
+const TEACH_AGENT_CONTRACT = "0x28f31060791aDEB994283Bc804E804F5ff26261C"
 const PAY_SELECTOR = "0x2567b851"
 const PAYMENT_VALUE = ethers.utils.parseEther("0.001")
 // cUSD on Celo Mainnet — used for MiniPay payments (MiniPay drops `value` in CIP-64 txns)

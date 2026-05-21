@@ -12,7 +12,7 @@
  */
 
 export const DEFAULT_BASE_URL = "https://teachagent.onrender.com"
-export const TEACH_AGENT_CONTRACT = "0x6a818b6E70fe033d3b70b5D0bEfFd7e32FB221cA"
+export const TEACH_AGENT_CONTRACT = "0x28f31060791aDEB994283Bc804E804F5ff26261C"
 export const CUSD_ADDRESS = "0x765DE816845861e75A25fCA122bb6898B8B1282a"
 export const CELO_CHAIN_ID = 42220
 
