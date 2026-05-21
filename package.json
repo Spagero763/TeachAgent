@@ -2,6 +2,7 @@
   "name": "teachagent",
   "version": "1.0.0",
   "description": "AI agent for educator reputation on Celo — ERC-8004 registered",
+  "private": true,
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon --exec ts-node src/index.ts",
