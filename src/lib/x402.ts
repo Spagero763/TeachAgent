@@ -49,7 +49,13 @@ export async function verifyPayment(
         ) {
           try {
             const parsed = iface.parseLog(log)
-            if ((parsed.args.amount as ethers.BigNumber).gte(PRICE_CELO)) {
+            // Require the payer in the event to match the claimer — prevents
+            // someone from redeeming another wallet's payment txHash.
+            const eventStudent = (parsed.args.student as string).toLowerCase()
+            if (
+              eventStudent === studentAddress.toLowerCase() &&
+              (parsed.args.amount as ethers.BigNumber).gte(PRICE_CELO)
+            ) {
               return { valid: true, payer: parsed.args.student }
             }
           } catch {}
