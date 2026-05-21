@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TeachAgent Widget — Demo</title>
+  <style>
+    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: #F0F4F1; color: #0F1F16; }
+    .wrap { max-width: 640px; margin: 0 auto; padding: 80px 24px; }
+    h1 { font-size: 2rem; letter-spacing: -0.02em; }
+    code { background: #fff; border: 1px solid #D4E8DB; padding: 2px 8px; border-radius: 6px; font-size: 13px; color: #1B8A4F; }
+    pre { background: #fff; border: 1px solid #D4E8DB; padding: 16px; border-radius: 12px; overflow: auto; font-size: 13px; }
+    .green { color: #35D07F; }
+    p { line-height: 1.7; color: rgba(15,31,22,0.7); }
+  </style>
+  <!-- Optional config BEFORE the widget script -->
+  <script>
+    window.TeachAgentConfig = { position: "bottom-right", color: "#35D07F", label: "Ask about Celo" }
+  </script>
+</head>
+<body>
+  <div class="wrap">
+    <h1>TeachAgent <span class="green">Widget</span> Demo</h1>
+    <p>This page embeds the TeachAgent widget. Look for the green button in the bottom-right corner — click it to ask anything about Celo.</p>
+    <p>Add it to any site with one line:</p>
+    <pre>&lt;script src="https://teach-agent.vercel.app/widget.js"&gt;&lt;/script&gt;</pre>
+    <p>Optional config:</p>
+    <pre>&lt;script&gt;
+  window.TeachAgentConfig = {
+    position: "bottom-right", // or "bottom-left"
+    color: "#35D07F",
+    label: "Ask about Celo"
+  }
+&lt;/script&gt;</pre>
+  </div>
+
+  <!-- The widget -->
+  <script src="/widget.js"></script>
+</body>
+</html>
