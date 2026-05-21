@@ -245,6 +245,106 @@ agentRouter.get("/history/:address", async (req: Request, res: Response) => {
   }
 })
 
+// ─────────────────────────────────────────────────────────────
+// AGENT-TO-AGENT (A2A) — infrastructure for other agents/dApps
+// Other agents query TeachAgent's verified Celo knowledge.
+// Follows an A2A-style message envelope and the x402 payment flow.
+// ─────────────────────────────────────────────────────────────
+
+// GET /agent/a2a — A2A skill descriptor (what this endpoint does)
+agentRouter.get("/a2a", (_req: Request, res: Response) => {
+  res.json({
+    protocol: "a2a",
+    skill: {
+      id: "celo-knowledge-query",
+      name: "Celo Knowledge Query",
+      description: "Query verified, up-to-date knowledge about the Celo blockchain ecosystem — contracts, MiniPay, stablecoins, DeFi, staking, governance, and developer tooling.",
+      tags: ["celo", "blockchain", "knowledge", "education", "qa"],
+      inputModes: ["text"],
+      outputModes: ["text"],
+    },
+    invoke: {
+      method: "POST",
+      url: "https://teachagent.onrender.com/agent/a2a",
+      body: { message: { role: "user", parts: [{ type: "text", text: "<your question>" }] }, agentAddress: "0x...", txHash: "0x... (after payment)" },
+    },
+    payment: {
+      ...getPaymentRequirements(),
+      x402: true,
+      note: "First query per agent address is free. Subsequent queries require 0.001 CELO via payForQuestion() or 0.001 cUSD transfer.",
+    },
+    identity: { standard: "ERC-8004", chainId: 42220, agentId: 9099 },
+  })
+})
+
+// POST /agent/a2a — agent-to-agent query with x402 payment flow
+agentRouter.post("/a2a", async (req: Request, res: Response) => {
+  const { message, agentAddress, txHash } = req.body
+
+  // Extract text from A2A message envelope (or accept a plain { question })
+  let question: string | undefined = req.body?.question
+  if (!question && message?.parts?.length) {
+    question = message.parts.filter((p: any) => p?.type === "text" && p?.text).map((p: any) => p.text).join("\n").trim()
+  }
+  if (!question?.trim()) {
+    return res.status(400).json({ error: "A2A message must contain a text part with a question" })
+  }
+  if (!agentAddress || !ethers.utils.isAddress(agentAddress)) {
+    return res.status(400).json({ error: "Valid agentAddress required" })
+  }
+
+  const cleanQuestion = question.trim().replace(/[\x00-\x1F\x7F]/g, " ")
+
+  function a2aReply(answer: string, extra: Record<string, any> = {}) {
+    return {
+      protocol: "a2a",
+      message: { role: "agent", parts: [{ type: "text", text: answer }] },
+      ...extra,
+    }
+  }
+
+  try {
+    // No payment yet — free first query per agent, else 402 with x402 requirements
+    if (!txHash) {
+      const freeUsed = await isFreeUsed(agentAddress)
+      if (!freeUsed) {
+        const history = await getHistory(agentAddress)
+        const answer = await askCelo(cleanQuestion, history)
+        await saveHistory(agentAddress, [...history, { role: "user", content: cleanQuestion }, { role: "assistant", content: answer }])
+        await markFreeUsed(agentAddress)
+        return res.json(a2aReply(answer, { freeQuery: true }))
+      }
+      // x402: signal payment required with machine-readable requirements
+      res.setHeader("X-Payment-Required", "true")
+      return res.status(402).json({
+        protocol: "a2a",
+        error: "Payment required",
+        x402: true,
+        ...getPaymentRequirements(),
+        message: "Pay 0.001 CELO via payForQuestion() (or 0.001 cUSD transfer), then resend with txHash.",
+      })
+    }
+
+    // Paid path — verify onchain, prevent replay
+    if (await isTxUsed(txHash)) {
+      return res.status(400).json({ protocol: "a2a", error: "Transaction already used" })
+    }
+    const { valid, payer, error: payErr } = await verifyPayment(txHash, agentAddress, provider)
+    if (!valid) {
+      return res.status(402).json({ protocol: "a2a", error: "Payment verification failed", reason: payErr })
+    }
+
+    const history = await getHistory(agentAddress)
+    const answer = await askCelo(cleanQuestion, history)
+    await saveHistory(agentAddress, [...history, { role: "user", content: cleanQuestion }, { role: "assistant", content: answer }])
+    await markTxUsed(txHash)
+
+    return res.json(a2aReply(answer, { payment: { txHash, payer: payer || agentAddress, amount: "0.001 CELO", verified: true } }))
+  } catch (err: any) {
+    return res.status(500).json({ protocol: "a2a", error: err.message })
+  }
+})
+
 // GET /agent/health (alias)
 agentRouter.get("/health", (_req: Request, res: Response) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() })
