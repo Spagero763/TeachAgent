@@ -124,89 +124,105 @@ const PRICE_CUSD = ethers.utils.parseEther("0.001")
 let statsCache: { data: any; expires: number } | null = null
 const STATS_CACHE_TTL_MS = 30_000
 
+// Payment contracts to aggregate. Both emit QuestionPaid + receive cUSD, so
+// stats span the full history: the legacy contract (frozen) AND the current V2.
+const LEGACY_CONTRACT = "0x6a818b6E70fe033d3b70b5D0bEfFd7e32FB221cA"
+const LEGACY_DEPLOY_BLOCK = 64514140 // legacy V1 deploy block
+const V2_DEPLOY_BLOCK = 67460000     // current V2 deploy block
+
+// Legacy contract is no longer used for new payments — its data never changes,
+// so cache it for the whole process lifetime instead of re-scanning every time.
+type ContractStats = { userCounts: Record<string, number>; celoQuestions: number; cusdQuestions: number }
+let legacyStatsCache: ContractStats | null = null
+
+const CHUNK_SIZE = 10000
+async function queryInChunks(
+  contract: ethers.Contract,
+  filter: ethers.EventFilter,
+  fromBlock: number,
+  toBlock: number
+): Promise<ethers.Event[]> {
+  const allEvents: ethers.Event[] = []
+  for (let from = fromBlock; from <= toBlock; from += CHUNK_SIZE) {
+    const to = Math.min(from + CHUNK_SIZE - 1, toBlock)
+    try {
+      allEvents.push(...(await contract.queryFilter(filter, from, to)))
+    } catch (err: any) {
+      console.error(`[stats] chunk ${from}-${to} failed:`, err.message)
+    }
+  }
+  return allEvents
+}
+
+// Collect CELO + cUSD payment stats for a single contract address.
+async function collectContractStats(address: string, deployBlock: number, currentBlock: number): Promise<ContractStats> {
+  const userCounts: Record<string, number> = {}
+  let celoQuestions = 0
+  let cusdQuestions = 0
+
+  // Native CELO totalQuestions() counter
+  try {
+    const c = new ethers.Contract(address, ["function totalQuestions() view returns (uint256)"], provider)
+    celoQuestions = (await c.totalQuestions() as ethers.BigNumber).toNumber()
+  } catch (err: any) {
+    console.error(`[stats] totalQuestions(${address}) failed:`, err.message)
+  }
+
+  // QuestionPaid events → per-user counts (CELO payers)
+  try {
+    const c = new ethers.Contract(address, ["event QuestionPaid(address indexed student, uint256 indexed questionId, uint256 amount)"], provider)
+    const events = await queryInChunks(c, c.filters.QuestionPaid(), deployBlock, currentBlock)
+    for (const ev of events) {
+      const student = (ev as ethers.Event & { args: { student: string } }).args?.student
+      if (student) userCounts[student.toLowerCase()] = (userCounts[student.toLowerCase()] || 0) + 1
+    }
+  } catch (err: any) {
+    console.error(`[stats] QuestionPaid(${address}) failed:`, err.message)
+  }
+
+  // cUSD transfers into the contract → MiniPay payers
+  try {
+    const cUSD = new ethers.Contract(CUSD_ADDRESS, ["event Transfer(address indexed from, address indexed to, uint256 value)"], provider)
+    const events = await queryInChunks(cUSD, cUSD.filters.Transfer(null, address), deployBlock, currentBlock)
+    for (const ev of events) {
+      const args = (ev as ethers.Event & { args: { from: string; value: ethers.BigNumber } }).args
+      if (args?.value?.gte(PRICE_CUSD)) {
+        userCounts[args.from.toLowerCase()] = (userCounts[args.from.toLowerCase()] || 0) + 1
+        cusdQuestions++
+      }
+    }
+  } catch (err: any) {
+    console.error(`[stats] cUSD Transfer(${address}) failed:`, err.message)
+  }
+
+  return { userCounts, celoQuestions, cusdQuestions }
+}
+
 agentRouter.get("/stats", async (_req: Request, res: Response) => {
   // Serve cached response if fresh
   if (statsCache && Date.now() < statsCache.expires) {
     return res.json({ ...statsCache.data, cached: true })
   }
 
-  // Step 1: read totalQuestions from contract (native CELO payments only)
-  let celoQuestions = 0
-  try {
-    const contract = new ethers.Contract(
-      TEACH_AGENT_CONTRACT,
-      ["function totalQuestions() view returns (uint256)"],
-      provider
-    )
-    const raw: ethers.BigNumber = await contract.totalQuestions()
-    celoQuestions = raw.toNumber()
-  } catch (err: any) {
-    console.error("[stats] totalQuestions failed:", err.message)
-    return res.status(500).json({ error: `Contract read failed: ${err.message}` })
-  }
-
-  const userCounts: Record<string, number> = {}
-  // Contract deployment block — query all events since contract was created
-  // V2 contract (0x28f3...261C) deployed ~block 67460000 on Celo Mainnet
-  const CONTRACT_DEPLOY_BLOCK = 67460000
   const currentBlock = await provider.getBlockNumber().catch(() => 0)
-
-  // Helper: query events in chunks to avoid RPC limits (max 10K blocks per call)
-  const CHUNK_SIZE = 10000
-  async function queryInChunks(contract: ethers.Contract, filter: ethers.EventFilter): Promise<ethers.Event[]> {
-    const allEvents: ethers.Event[] = []
-    for (let from = CONTRACT_DEPLOY_BLOCK; from <= currentBlock; from += CHUNK_SIZE) {
-      const to = Math.min(from + CHUNK_SIZE - 1, currentBlock)
-      try {
-        const events = await contract.queryFilter(filter, from, to)
-        allEvents.push(...events)
-      } catch (err: any) {
-        console.error(`[stats] chunk ${from}-${to} failed:`, err.message)
-      }
-    }
-    return allEvents
+  if (!currentBlock) {
+    return res.status(500).json({ error: "Could not read current block" })
   }
 
-  // Step 2: QuestionPaid events — native CELO payments (non-fatal)
-  try {
-    const contract = new ethers.Contract(
-      TEACH_AGENT_CONTRACT,
-      ["event QuestionPaid(address indexed student, uint256 indexed questionId, uint256 amount)"],
-      provider
-    )
-    const events = await queryInChunks(contract, contract.filters.QuestionPaid())
-    for (const ev of events) {
-      const args = (ev as ethers.Event & { args: { student: string } }).args
-      if (args?.student) {
-        const addr = args.student.toLowerCase()
-        userCounts[addr] = (userCounts[addr] || 0) + 1
-      }
-    }
-  } catch (err: any) {
-    console.error("[stats] QuestionPaid query failed (non-fatal):", err.message)
+  // Legacy contract is frozen — query once, then reuse for the process lifetime
+  if (!legacyStatsCache) {
+    legacyStatsCache = await collectContractStats(LEGACY_CONTRACT, LEGACY_DEPLOY_BLOCK, currentBlock)
   }
+  // Current V2 contract — query live each refresh
+  const current = await collectContractStats(TEACH_AGENT_CONTRACT, V2_DEPLOY_BLOCK, currentBlock)
 
-  // Step 3: cUSD Transfer events to contract — MiniPay payments (non-fatal)
-  let cusdQuestions = 0
-  try {
-    const cUSD = new ethers.Contract(
-      CUSD_ADDRESS,
-      ["event Transfer(address indexed from, address indexed to, uint256 value)"],
-      provider
-    )
-    const filter = cUSD.filters.Transfer(null, TEACH_AGENT_CONTRACT)
-    const events = await queryInChunks(cUSD, filter)
-    for (const ev of events) {
-      const args = (ev as ethers.Event & { args: { from: string; to: string; value: ethers.BigNumber } }).args
-      if (args?.value?.gte(PRICE_CUSD)) {
-        const addr = args.from.toLowerCase()
-        userCounts[addr] = (userCounts[addr] || 0) + 1
-        cusdQuestions++
-      }
-    }
-  } catch (err: any) {
-    console.error("[stats] cUSD Transfer query failed (non-fatal):", err.message)
+  // Merge legacy + current: combined user counts and totals
+  const userCounts: Record<string, number> = { ...legacyStatsCache.userCounts }
+  for (const [addr, n] of Object.entries(current.userCounts)) {
+    userCounts[addr] = (userCounts[addr] || 0) + n
   }
+  const celoQuestions = legacyStatsCache.celoQuestions + current.celoQuestions
+  const cusdQuestions = legacyStatsCache.cusdQuestions + current.cusdQuestions
 
   const totalQuestions = celoQuestions + cusdQuestions
   const leaderboard = Object.entries(userCounts)
@@ -221,6 +237,7 @@ agentRouter.get("/stats", async (_req: Request, res: Response) => {
     uniqueUsers: Object.keys(userCounts).length,
     leaderboard,
     contract: TEACH_AGENT_CONTRACT,
+    contracts: [LEGACY_CONTRACT, TEACH_AGENT_CONTRACT],
     network: "Celo Mainnet",
     updatedAt: new Date().toISOString(),
   }
