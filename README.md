@@ -46,47 +46,6 @@ TeachAgent answers any question about the Celo ecosystem — smart contracts, cU
 
 MiniPay uses CIP-64 transactions which silently drop the native `value` field, so native CELO transfers revert. TeachAgent automatically switches to the cUSD ERC-20 path when MiniPay is detected (`window.ethereum.isMiniPay === true`).
 
----
-
-## API
-
-### Free first question (no txHash needed)
-
-```bash
-curl -X POST https://teachagent.onrender.com/agent/session \
-  -H "Content-Type: application/json" \
-  -d '{"question":"What is cUSD?","studentAddress":"0x..."}'
-# Returns answer + freeQuestion: true on first call
-# Returns 402 on subsequent calls without txHash
-```
-
-### Paid question
-
-```bash
-# After paying on-chain, re-call with txHash
-curl -X POST https://teachagent.onrender.com/agent/session \
-  -H "Content-Type: application/json" \
-  -d '{"question":"How do I deploy on Celo?","studentAddress":"0x...","txHash":"0x..."}'
-```
-
-### Other endpoints
-
-```bash
-# Live on-chain stats + leaderboard
-GET https://teachagent.onrender.com/agent/stats
-
-# Agent identity + payment requirements
-GET https://teachagent.onrender.com/agent/identity
-
-# Conversation history for a wallet
-GET https://teachagent.onrender.com/agent/history/:address
-
-# Health check
-GET https://teachagent.onrender.com/agent/health
-```
-
----
-
 ## Contracts
 
 | Contract | Address |
@@ -97,62 +56,6 @@ GET https://teachagent.onrender.com/agent/health
 
 > **Note:** TeachAgent uses Mento's cUSD — not Circle USDC. They are different tokens.
 
----
-
-## Local development
-
-### Backend
-
-```bash
-npm install
-cp .env.example .env   # fill in values
-npm run dev            # starts on port 3001
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev            # starts on port 3000
-```
-
-### Environment variables (backend)
-
-| Variable | Description | Source |
-|----------|-------------|--------|
-| `GROQ_API_KEY` | LLM API key | console.groq.com |
-| `AGENT_PRIVATE_KEY` | Wallet that signs agent identity | your wallet |
-| `UPSTASH_REDIS_REST_URL` | Redis URL for memory + free-Q tracking | upstash.com (free) |
-| `UPSTASH_REDIS_REST_TOKEN` | Redis auth token | upstash.com |
-| `RENDER_EXTERNAL_URL` | Auto-set by Render — enables keep-alive ping | auto |
-
----
-
-## Architecture
-
-```
-User
- |
- +-- teach-agent.vercel.app (Next.js frontend)
- |     +-- Reown AppKit      -> wallet connect (MetaMask / Valora / MiniPay)
- |     +-- ethers.js         -> sign & submit payment tx on Celo
- |     +-- history loader    -> fetch /agent/history on wallet connect
- |     +-- free-Q banner     -> shows "first question free" until used
- |     +-- favicon           -> generated via Next.js ImageResponse
- |     `-- Framer Motion     -> chat animations + floating BG nodes
- |
- `-- teachagent.onrender.com (Express backend)
-       +-- POST /agent/session   -> free-Q check -> verify payment -> Groq -> answer
-       +-- GET  /agent/stats     -> live CELO + cUSD on-chain metrics + leaderboard
-       +-- GET  /agent/history   -> stored conversation history per wallet
-       +-- GET  /agent/identity  -> agent card (ERC-8004)
-       +-- Upstash Redis         -> conversation memory + free-Q flags (7-day TTL)
-       +-- Celo Forno RPC        -> read contract state + verify tx receipts
-       `-- keep-alive ping       -> GET /health every 14 min (prevents cold starts)
-```
-
----
 
 ## Knowledge base
 
@@ -166,7 +69,3 @@ The AI system prompt contains accurate, up-to-date Celo facts including:
 - Staking, governance, and validator groups
 - All key contract addresses on mainnet
 - Testnet faucets and explorer links
-
----
-
-## Built for Celo Proof of Ship
