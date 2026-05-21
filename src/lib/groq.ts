@@ -248,9 +248,12 @@ export async function askCelo(question: string, history: { role: string, content
     const res = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
       {
-        model: "llama-3.3-70b-versatile",
-        max_tokens: 2048,
+        // gpt-oss-120b: production model, 120B params, 200K tokens/day (2x the
+        // llama-3.3-70b free cap). reasoning_effort low keeps token use lean.
+        model: "openai/gpt-oss-120b",
+        max_completion_tokens: 2048,
         temperature: 0.3,
+        reasoning_effort: "low",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           ...history,
