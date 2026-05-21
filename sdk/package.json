@@ -1,0 +1,44 @@
+{
+  "name": "teachagent-sdk",
+  "version": "1.0.0",
+  "description": "Add verified Celo blockchain Q&A to any app or agent. SDK for TeachAgent — the pay-per-question AI tutor on Celo.",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "celo",
+    "blockchain",
+    "ai",
+    "agent",
+    "teachagent",
+    "erc-8004",
+    "minipay",
+    "web3",
+    "sdk"
+  ],
+  "author": "Afolabi Emmanuel (Spagero) <navigatorabraham@gmail.com>",
+  "license": "MIT",
+  "homepage": "https://teach-agent.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Spagero763/TeachAgent.git",
+    "directory": "sdk"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0"
+  }
+}
