@@ -1,6 +1,6 @@
 {
   "name": "teachagent-sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Add verified Celo blockchain Q&A to any app or agent. SDK for TeachAgent — the pay-per-question AI tutor on Celo.",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
@@ -13,7 +13,10 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": ["dist", "README.md"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --clean",
     "prepublishOnly": "npm run build"
