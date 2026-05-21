@@ -1,26 +1,64 @@
 {
-  "type": "agent",
+  "protocolVersion": "0.2.0",
   "name": "TeachAgent",
-  "description": "AI agent that answers questions about the Celo blockchain ecosystem",
-  "version": "2.0.0",
-  "endpoints": [
+  "description": "AI agent and infrastructure that answers verified questions about the Celo blockchain ecosystem — contracts, MiniPay, stablecoins, DeFi, staking, governance, and developer tooling. Other agents and dApps can query its knowledge via A2A and the SDK.",
+  "version": "2.1.0",
+  "url": "https://teachagent.onrender.com",
+  "preferredTransport": "JSONRPC",
+  "provider": {
+    "organization": "TeachAgent",
+    "url": "https://teach-agent.vercel.app"
+  },
+  "documentationUrl": "https://github.com/Spagero763/TeachAgent",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text"],
+  "skills": [
     {
-      "type": "rest",
-      "url": "https://teachagent.onrender.com",
-      "description": "TeachAgent REST API"
+      "id": "celo-knowledge-query",
+      "name": "Celo Knowledge Query",
+      "description": "Query verified, up-to-date knowledge about the Celo blockchain ecosystem. Grounded in real contract addresses, RPCs, protocols, and docs — never hallucinated.",
+      "tags": ["celo", "blockchain", "knowledge", "education", "qa", "defi", "minipay"],
+      "examples": [
+        "What is cUSD and what is its contract address?",
+        "How do I deploy a smart contract on Celo?",
+        "How does MiniPay handle CIP-64 transactions?"
+      ],
+      "inputModes": ["text"],
+      "outputModes": ["text"]
     }
   ],
-  "capabilities": [
-    "educator-scoring",
-    "tutoring-sessions",
-    "reputation-tracking"
+  "endpoints": [
+    { "type": "rest", "url": "https://teachagent.onrender.com/agent/session", "description": "Ask a question (REST)" },
+    { "type": "a2a", "url": "https://teachagent.onrender.com/agent/a2a", "description": "Agent-to-agent Celo knowledge query" },
+    { "type": "rest", "url": "https://teachagent.onrender.com/agent/stats", "description": "Live onchain usage metrics" }
   ],
   "payment": {
+    "x402": true,
     "token": "CELO",
     "pricePerQuestion": "0.001",
     "network": "celo",
     "chainId": 42220,
     "contract": "0x6a818b6E70fe033d3b70b5D0bEfFd7e32FB221cA",
-    "method": "payForQuestion()"
+    "method": "payForQuestion()",
+    "alternativeToken": { "symbol": "cUSD", "address": "0x765DE816845861e75A25fCA122bb6898B8B1282a", "note": "0.001 cUSD transfer to contract (MiniPay path)" },
+    "freeFirstQuery": true
+  },
+  "identity": {
+    "standard": "ERC-8004",
+    "chainId": 42220,
+    "agentId": 9099,
+    "agentUrl": "https://8004scan.io/agents/celo/9099",
+    "identityRegistry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+    "reputationRegistry": "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63"
+  },
+  "developer": {
+    "name": "Afolabi Emmanuel (Spagero)",
+    "twitter": "@spagero71",
+    "github": "https://github.com/Spagero763/TeachAgent"
   }
 }
